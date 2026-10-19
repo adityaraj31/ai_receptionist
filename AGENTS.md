@@ -1,0 +1,95 @@
+# AI Receptionist System
+
+A voice AI receptionist for clinics. It answers phone calls 24x7 in Hindi and English, books appointments, sends confirmations (WhatsApp/SMS), and reports on every call.
+
+## Architecture
+
+```
+Caller -> PSTN -> Exotel/Plivo -> SIP trunk -> LiveKit SIP -> LiveKit Room
+   -> Agent worker (Python): VAD -> STT -> LLM (tools) -> TTS
+   -> Tools: calendar, FAQ RAG, transfer to human, WhatsApp/SMS, CRM/Sheets
+   -> Post-call queue: recording, transcript, summary, evals, cost
+   -> Postgres -> Analytics dashboard
+```
+
+## Tech stack
+
+- Agent: Python 3.11+, LiveKit Agents (cascaded pipeline, NOT speech-to-speech)
+- STT/TTS: Sarvam AI (Hindi + English); Deepgram as English fallback
+- VAD / turn detection: Silero VAD + LiveKit turn detector
+- LLM: fast tool-calling model, configurable via env (`LLM_MODEL`)
+- Backend: FastAPI
+- DB: PostgreSQL + pgvector (FAQ RAG)
+- Queue: Redis + Arq (post-call jobs)
+- Storage: S3-compatible (recordings), use Cloudflare R2 or S3 Mumbai
+- Messaging: WhatsApp Business API (Meta Cloud API or Gupshup), SMS via Exotel/Plivo
+- Dashboard: Next.js + Tailwind + Recharts
+- Observability: Langfuse (LLM traces), Sentry, structured JSON logs
+- Infra: Docker Compose locally; AWS ap-south-1 (Mumbai) for deployment
+
+## Repo layout
+
+```
+/agent       LiveKit agent worker (voice pipeline, tools, prompts)
+/api         FastAPI backend (appointments, calls, webhooks, dashboard API)
+/dashboard   Next.js analytics dashboard
+/infra       Dockerfiles, docker-compose, deploy configs
+/evals       Transcript evaluation scripts and test conversations
+/docs        Architecture notes, runbooks
+```
+
+## Conventions
+
+- Python: type hints everywhere, `ruff` for lint/format, `pytest` for tests, `uv` or `pip-tools` for deps.
+- Config via environment variables only. Never hardcode keys. Keep `.env.example` updated.
+- Every external call (STT, LLM, TTS, calendar, WhatsApp) must have timeouts and error handling. A call must never go silent.
+- Log a structured event for each call stage into `call_events` with timestamps (used for latency analysis).
+- Before using LiveKit, Sarvam or any SDK, check the current official docs. APIs change; do not rely on memory.
+
+## Voice agent rules
+
+- Latency target: under ~1 second from end of caller speech to start of agent speech. Stream at every stage.
+- Support interruptions (barge-in). Stop TTS immediately when the caller speaks.
+- Keep spoken replies short (1-2 sentences). This is a phone call, not a chat.
+- Greet with an AI disclosure and ask for recording consent at the start of every call.
+- Detect language (Hindi / English / Hinglish) and reply in the caller's language.
+- Confirm critical details by reading them back: name, date, time, phone number.
+- Transfer to a human on: medical emergency keywords, caller requests a human, 2 failed attempts to understand, or repeated frustration.
+- The agent must never give medical advice or diagnoses. It only handles scheduling, clinic info and message-taking.
+
+## Tools the agent exposes
+
+- `check_availability(date, doctor)`
+- `book_appointment(patient_name, phone, doctor, datetime)`
+- `reschedule_appointment(appointment_id, datetime)` / `cancel_appointment(appointment_id)`
+- `search_faq(query)` (RAG over clinic timings, fees, doctors, location)
+- `transfer_to_human(reason)`
+- `send_confirmation(channel, appointment_id)` (WhatsApp or SMS)
+- `save_lead(name, phone, notes)` (CRM or Sheets)
+
+Tool outputs must be short and structured so the LLM can answer in one sentence.
+
+## Data model (core tables)
+
+`clinics`, `doctors`, `patients`, `appointments`, `calls` (id, from_number, duration, language, recording_url, cost, status), `transcripts`, `call_events`, `evaluations`.
+
+## Compliance (India)
+
+- Health data falls under DPDP: encrypt at rest, restrict access, define retention, keep data in India.
+- Mask phone numbers in logs and dashboards where possible.
+- Respect TRAI rules for number series and outbound calling. Do not build outbound calling without a consent flag.
+- Keep HIPAA awareness in mind for international clinics.
+
+## Working agreement for the AI assistant
+
+1. Plan first, then build. Propose a short plan before writing code for any new module.
+2. Work in small vertical slices. Each slice must run and have at least one test or a manual test script.
+3. Do not add dependencies without saying why.
+4. After each slice, update this file or `/docs` if conventions or architecture changed.
+5. Ask before making irreversible changes (schema drops, deleting files).
+
+## Milestones
+
+- Week 1: Phone -> STT -> LLM -> TTS working, calendar booking, Hindi + English.
+- Week 2: FAQ RAG, human transfer, WhatsApp/SMS confirmations, reminders, CRM sync.
+- Week 3: Recording, transcripts, evals, analytics dashboard, concurrency tests, demo and pricing.
