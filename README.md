@@ -16,8 +16,9 @@ See [AGENTS.md](AGENTS.md) for architecture, conventions, and the working agreem
 /docs        Architecture notes, runbooks
 ```
 
-Application code is not scaffolded yet. The local infrastructure (Postgres + pgvector,
-Redis) is ready to use.
+The local infrastructure (Postgres + pgvector, Redis) is ready to use, and the first
+agent slice is implemented in [`/agent`](agent/README.md). Other modules are not
+scaffolded yet.
 
 ## Prerequisites
 
@@ -93,9 +94,21 @@ redis://localhost:6379/0
 
 Change the defaults in `.env` before using anything beyond local development.
 
+## Run the voice agent
+
+```bash
+cd agent
+uv sync
+uv run python src/receptionist_agent.py dev
+```
+
+Then open the [LiveKit Agents Playground](https://agents-playground.livekit.io/) and
+start a session with agent name `ai-receptionist`. See [agent/README.md](agent/README.md)
+for required keys, browser testing, and latency log fields.
+
 ## Next steps
 
-1. Agent slice: phone/SIP -> STT -> LLM -> TTS, Hindi + English.
+1. Agent tools: calendar booking, FAQ, human transfer.
 2. API slice: appointments, calls, webhooks, dashboard endpoints.
 3. Dashboard slice: call list, transcripts, analytics.
-4. FAQ RAG, human transfer, WhatsApp/SMS, post-call jobs and evals.
+4. FAQ RAG, WhatsApp/SMS, post-call jobs and evals.
