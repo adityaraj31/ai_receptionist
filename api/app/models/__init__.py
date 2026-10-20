@@ -5,7 +5,7 @@ from .call import Call, CallEvent, Evaluation, Transcript
 from .clinic import Clinic
 from .doctor import Doctor
 from .patient import Patient
-from .staff import AgentApiKey, StaffUser
+from .staff import AgentApiKey, StaffInvitation, StaffUser
 
 __all__ = [
     "AgentApiKey",
@@ -18,6 +18,7 @@ __all__ = [
     "Doctor",
     "Evaluation",
     "Patient",
+    "StaffInvitation",
     "StaffUser",
     "TimeOff",
     "TimestampMixin",

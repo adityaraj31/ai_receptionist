@@ -30,6 +30,26 @@ class StaffUser(Base, TimestampMixin):
     clinic: Mapped[Clinic] = relationship(back_populates="staff_users")
 
 
+class StaffInvitation(Base, TimestampMixin):
+    __tablename__ = "staff_invitations"
+    __table_args__ = (UniqueConstraint("token_hash", name="uq_staff_invitations_token_hash"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    clinic_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("clinics.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    email: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+    full_name: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    role: Mapped[str] = mapped_column(Text, nullable=False, default="staff")
+    token_hash: Mapped[str] = mapped_column(Text, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    invited_by_staff_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("staff_users.id", ondelete="SET NULL")
+    )
+
+
 class AgentApiKey(Base, TimestampMixin):
     __tablename__ = "agent_api_keys"
     __table_args__ = (UniqueConstraint("key_hash", name="uq_agent_api_keys_key_hash"),)

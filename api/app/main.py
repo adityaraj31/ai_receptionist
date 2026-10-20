@@ -10,7 +10,9 @@ from .api.routers import (
     clinic,
     doctors,
     health,
+    invitations,
     slots,
+    staff,
     time_off,
 )
 from .config import settings
@@ -19,6 +21,14 @@ from .db import engine
 TAGS_METADATA = [
     {"name": "Health", "description": "Service and database health checks."},
     {"name": "Auth", "description": "Staff login and current-user lookup."},
+    {
+        "name": "Staff",
+        "description": "Clinic admin staff management and invitations.",
+    },
+    {
+        "name": "Invitations",
+        "description": "Public staff invitation preview and acceptance.",
+    },
     {"name": "Clinic", "description": "Clinic profile for the logged-in staff user."},
     {
         "name": "Doctors",
@@ -65,10 +75,13 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    allow_private_network=True,
 )
 
 app.include_router(health.router)
 app.include_router(auth.router, prefix="/api/v1")
+app.include_router(invitations.router, prefix="/api/v1")
+app.include_router(staff.router, prefix="/api/v1")
 app.include_router(clinic.router, prefix="/api/v1")
 app.include_router(doctors.router, prefix="/api/v1")
 app.include_router(availability.router, prefix="/api/v1")

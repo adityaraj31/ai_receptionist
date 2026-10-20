@@ -76,7 +76,7 @@ Tool outputs must be short and structured so the LLM can answer in one sentence.
 
 ## Data model (core tables)
 
-`clinics`, `staff_users`, `agent_api_keys`, `doctors`, `availability_rules`, `time_off`, `patients`, `appointments` (clinic-scoped, with overlap exclusion), `calls` (id, from_number, duration, language, recording_url, cost, status), `transcripts`, `call_events`, `evaluations`.
+`clinics`, `staff_users`, `staff_invitations`, `agent_api_keys`, `doctors`, `availability_rules`, `time_off`, `patients`, `appointments` (clinic-scoped, with overlap exclusion), `calls` (id, from_number, duration, language, recording_url, cost, status), `transcripts`, `call_events`, `evaluations`.
 
 Free slots = weekly availability minus time off minus non-cancelled appointments. Appointments must align to generated slots; a GiST exclusion constraint blocks overlapping bookings even under concurrent requests.
 

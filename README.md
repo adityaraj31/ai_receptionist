@@ -133,12 +133,30 @@ npm install
 npm run dev
 ```
 
-Open <http://localhost:3000> and sign in with the demo staff credentials. The dashboard
-authenticates with the staff JWT and lets you manage doctors, weekly availability, time
-off, free slots, and appointments. It calls the API at `NEXT_PUBLIC_API_URL`, which
-defaults to `http://localhost:8000`; copy `.env.example` to `.env.local` to override it.
-The API must allow the dashboard origin via `DASHBOARD_URL` (default
-`http://localhost:3000`). Use `npm run typecheck` and `npm run build` before deploying.
+Open <http://localhost:3000> and sign in with the staff email and password from your
+`.env`. The dashboard authenticates with the staff JWT and calls only the FastAPI
+backend at `NEXT_PUBLIC_API_URL` (default `http://localhost:8000`); copy `.env.example`
+to `.env.local` to override it. The API must allow the dashboard origin via
+`DASHBOARD_URL` (default `http://localhost:3000`).
+
+The dashboard includes login, a first-run setup wizard, doctor management, weekly
+availability and time off, a daily appointment list with booking, rescheduling,
+cancellation, and free-slot views, plus admin-only staff management. Admins can invite
+receptionists or other admins, promote or demote staff, and deactivate access. An invite
+is a one-time link valid for 7 days; the recipient sets a password and is signed in
+immediately. Email delivery is not connected yet, so copy the link and send it manually.
+API types are generated from the OpenAPI schema:
+
+```bash
+npm run api:types   # requires the API on http://localhost:8000
+```
+
+The generated `src/lib/api-schema.d.ts` is committed, so builds do not need the API
+running. Run `npm run typecheck` and `npm run build` before deploying.
+
+If Chrome blocks local API requests with a private-network preflight error, keep the API
+and dashboard on `http://localhost` origins listed in `DASHBOARD_URL`. The API enables
+`allow_private_network=True` for development; this does not bypass the origin allow-list.
 
 ## Run the voice agent
 

@@ -11,6 +11,10 @@ def hash_service_key(key: str) -> str:
     return hashlib.sha256(key.encode("utf-8")).hexdigest()
 
 
+def hash_invitation_token(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
 def create_access_token(staff_id: UUID, clinic_id: UUID, role: str) -> tuple[str, int]:
     if not settings.secret_key:
         raise RuntimeError("SECRET_KEY is not configured")

@@ -10,10 +10,18 @@ from .availability import (
     AvailabilityRuleRead,
     AvailabilityRuleUpdate,
 )
-from .clinic import ClinicRead
+from .clinic import ClinicRead, ClinicUpdate
 from .common import Message, ORMModel
 from .doctor import DoctorCreate, DoctorRead, DoctorUpdate
 from .slot import FreeSlotRead
+from .staff import (
+    InvitationAccept,
+    InvitationPreview,
+    StaffInvitationCreate,
+    StaffInvitationCreated,
+    StaffInvitationRead,
+    StaffUpdate,
+)
 from .time_off import TimeOffCreate, TimeOffRead, TimeOffUpdate
 
 __all__ = [
@@ -24,15 +32,22 @@ __all__ = [
     "AvailabilityRuleRead",
     "AvailabilityRuleUpdate",
     "ClinicRead",
+    "ClinicUpdate",
     "DoctorCreate",
     "DoctorRead",
     "DoctorUpdate",
     "FreeSlotRead",
+    "InvitationAccept",
+    "InvitationPreview",
     "LoginRequest",
     "Message",
     "ORMModel",
     "PatientRead",
+    "StaffInvitationCreate",
+    "StaffInvitationCreated",
+    "StaffInvitationRead",
     "StaffRead",
+    "StaffUpdate",
     "TimeOffCreate",
     "TimeOffRead",
     "TimeOffUpdate",

@@ -89,6 +89,15 @@ async def get_current_staff(
     return await _resolve_staff(credentials, session)
 
 
+async def get_current_admin(staff: CurrentStaff) -> StaffUser:
+    if staff.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Clinic admin access required",
+        )
+    return staff
+
+
 async def get_service_principal(
     service_key: Annotated[str | None, Depends(service_key_scheme)],
     session: SessionDep,
@@ -115,5 +124,6 @@ async def get_any_principal(
 
 
 CurrentStaff = Annotated[StaffUser, Depends(get_current_staff)]
+CurrentAdmin = Annotated[StaffUser, Depends(get_current_admin)]
 CurrentService = Annotated[Principal, Depends(get_service_principal)]
 AnyPrincipal = Annotated[Principal, Depends(get_any_principal)]

@@ -39,6 +39,21 @@ async def test_get_clinic_is_scoped_to_staff(client, auth_headers, clinic):
     assert response.json()["timezone"] == "Asia/Kolkata"
 
 
+async def test_cors_allows_private_network_preflight(client):
+    response = await client.options(
+        "/api/v1/auth/login",
+        headers={
+            "Origin": "http://localhost:3000",
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "content-type",
+            "Access-Control-Request-Private-Network": "true",
+        },
+    )
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "http://localhost:3000"
+    assert response.headers["access-control-allow-private-network"] == "true"
+
+
 async def test_agent_key_cannot_use_staff_routes(client, agent_headers):
     response = await client.get("/api/v1/doctors", headers=agent_headers)
     assert response.status_code == 401
@@ -65,6 +80,7 @@ async def test_openapi_documents_auth_and_time_off_update(client):
     document = response.json()
     assert {"BearerAuth", "ServiceKeyAuth"} <= set(document["components"]["securitySchemes"])
     assert "patch" in document["paths"]["/api/v1/doctors/{doctor_id}/time-off/{time_off_id}"]
+    assert "patch" in document["paths"]["/api/v1/clinic"]
 
 
 async def test_availability_overlap_is_rejected(client, auth_headers, doctor):

@@ -44,6 +44,10 @@ uv run uvicorn app.main:app --reload --port 8000
 
 OpenAPI docs: <http://localhost:8000/docs>
 
+CORS allows the dashboard origin from `DASHBOARD_URL` plus `http://127.0.0.1:3000`.
+Private-network preflights are enabled so recent Chrome versions can call a local API
+from a local dashboard in development; the origin allow-list still applies.
+
 The seed is idempotent and reads credentials from `.env`:
 
 - Staff email: `DEMO_STAFF_EMAIL` (defaults to `admin@demo-clinic.example.com`)
@@ -92,11 +96,27 @@ Authorization: Bearer <JWT>
 Get a token from `POST /api/v1/auth/login`. Every staff query is scoped to the
 `clinic_id` in the token.
 
+Admin-only routes require `role = "admin"` on the current staff account. Staff can
+manage doctors, availability, and appointments but cannot list staff, change roles, or
+invite people. An admin cannot deactivate or demote their own account.
+
 Agent-facing booking and slot endpoints accept either a staff JWT or:
 
 ```http
 X-Service-Key: <service-key>
 ```
+
+## Staff invitations
+
+Invitations are created by a clinic admin. The API stores only a SHA-256 hash of the
+random token, so the raw link is returned once at creation. Invitations expire after 7
+days and can be revoked. Accepting one creates an active staff account in the inviting
+clinic, marks the invitation as accepted, and returns a normal staff JWT. Email delivery
+is not wired yet; the dashboard shows the link for the admin to copy.
+
+The schema change is in Alembic revision `0003_staff_invitations`. Staff deactivation
+takes effect on the next request because dependencies load the current staff row, not
+just the JWT claims.
 
 ## Endpoints
 
@@ -106,6 +126,14 @@ X-Service-Key: <service-key>
 | `POST` | `/api/v1/auth/login` | none | Staff login |
 | `GET` | `/api/v1/auth/me` | staff | Current staff user |
 | `GET` | `/api/v1/clinic` | staff | Logged-in staff member's clinic |
+| `PATCH` | `/api/v1/clinic` | staff | Update clinic details |
+| `GET` | `/api/v1/staff` | admin | List staff in the clinic |
+| `PATCH` | `/api/v1/staff/{id}` | admin | Update role, name, or active status |
+| `GET` | `/api/v1/staff/invitations` | admin | List pending invitations |
+| `POST` | `/api/v1/staff/invitations` | admin | Create a 7-day invitation link |
+| `DELETE` | `/api/v1/staff/invitations/{id}` | admin | Revoke an invitation |
+| `GET` | `/api/v1/invitations/{token}` | none | Preview an invitation |
+| `POST` | `/api/v1/invitations/{token}/accept` | none | Set a password and create the account |
 | `GET` | `/api/v1/doctors` | staff | List doctors |
 | `POST` | `/api/v1/doctors` | staff | Create doctor |
 | `GET` | `/api/v1/doctors/{id}` | staff | Get doctor |
