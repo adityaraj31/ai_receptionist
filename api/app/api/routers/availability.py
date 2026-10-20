@@ -151,7 +151,7 @@ async def update_availability(
 
     if rule.end_time <= rule.start_time:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="end_time must be after start_time",
         )
     if rule.is_active:

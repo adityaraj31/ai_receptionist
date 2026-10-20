@@ -1,8 +1,10 @@
 from __future__ import annotations
 
-from datetime import time
+from datetime import date, datetime, time
+from zoneinfo import ZoneInfo
 
 from app.models import AvailabilityRule
+from app.services.slots import get_free_slots
 
 
 async def add_rule(
@@ -115,3 +117,42 @@ async def test_agent_can_read_free_slots(client, db_session, doctor, agent_heade
     )
     assert response.status_code == 200
     assert len(response.json()) == 4
+
+
+async def test_fully_booked_day_has_no_free_slots(
+    client, db_session, doctor, agent_headers, next_weekday, at_time
+):
+    day = next_weekday(1)
+    await add_rule(db_session, doctor, day)
+
+    for index, minute in enumerate(range(0, 60, 15)):
+        end_hour, end_minute = (10, 0) if minute == 45 else (9, minute + 15)
+        response = await client.post(
+            "/api/v1/appointments",
+            json={
+                "doctor_id": str(doctor.id),
+                "starts_at": at_time(day, 9, minute).isoformat(),
+                "ends_at": at_time(day, end_hour, end_minute).isoformat(),
+                "patient_name": f"Patient {index}",
+                "patient_phone": f"+91999999{index:04d}",
+            },
+            headers=agent_headers,
+        )
+        assert response.status_code == 201
+
+    slots = await client.get(
+        f"/api/v1/doctors/{doctor.id}/free-slots?date={day.isoformat()}",
+        headers=agent_headers,
+    )
+    assert slots.status_code == 200
+    assert slots.json() == []
+
+
+async def test_past_times_on_the_same_day_are_omitted(db_session, clinic, doctor):
+    day = date(2026, 1, 5)
+    await add_rule(db_session, doctor, day, start_time=time(9, 0), end_time=time(10, 0))
+    now = datetime(2026, 1, 5, 9, 30, tzinfo=ZoneInfo("Asia/Kolkata"))
+
+    slots = await get_free_slots(db_session, clinic, doctor, day, now=now)
+
+    assert [slot.starts_at.strftime("%H:%M") for slot in slots] == ["09:30", "09:45"]

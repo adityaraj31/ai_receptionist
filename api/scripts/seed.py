@@ -7,20 +7,26 @@ Run from the api directory:
 from __future__ import annotations
 
 import asyncio
+import os
 import sys
 from datetime import time
 from decimal import Decimal
 from pathlib import Path
 from uuid import UUID
 
-from sqlalchemy import select
+from dotenv import load_dotenv
+from sqlalchemy import select, update
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+API_DIR = Path(__file__).resolve().parents[1]
+ROOT_DIR = API_DIR.parent
+load_dotenv(ROOT_DIR / ".env")
+load_dotenv(API_DIR / ".env")
+sys.path.insert(0, str(API_DIR))
 
-from app.core.passwords import hash_password
-from app.core.security import hash_service_key
-from app.db import SessionLocal
-from app.models import (
+from app.core.passwords import hash_password  # noqa: E402
+from app.core.security import hash_service_key  # noqa: E402
+from app.db import SessionLocal  # noqa: E402
+from app.models import (  # noqa: E402
     AgentApiKey,
     AvailabilityRule,
     Clinic,
@@ -28,9 +34,21 @@ from app.models import (
     StaffUser,
 )
 
-DEMO_EMAIL = "admin@demo-clinic.example.com"
-DEMO_PASSWORD = "DemoClinic123!"
-DEMO_AGENT_KEY = "demo-agent-key-change-me"
+
+def required_secret(name: str, *, minimum_length: int) -> str:
+    value = (os.getenv(name) or "").strip()
+    if not value:
+        raise RuntimeError(
+            f"{name} is required. Add a strong value to .env before running the seed."
+        )
+    if len(value) < minimum_length:
+        raise RuntimeError(f"{name} must be at least {minimum_length} characters.")
+    return value
+
+
+DEMO_EMAIL = os.getenv("DEMO_STAFF_EMAIL", "admin@demo-clinic.example.com")
+DEMO_PASSWORD = required_secret("DEMO_STAFF_PASSWORD", minimum_length=12)
+DEMO_AGENT_KEY = required_secret("DEMO_AGENT_KEY", minimum_length=24)
 
 DOCTORS = [
     {
@@ -175,8 +193,18 @@ async def ensure_rule(
 
 async def ensure_agent_key(session, clinic_id: UUID) -> None:
     key_hash = hash_service_key(DEMO_AGENT_KEY)
-    exists = await session.scalar(select(AgentApiKey.id).where(AgentApiKey.key_hash == key_hash))
-    if exists is None:
+    await session.execute(
+        update(AgentApiKey)
+        .where(
+            AgentApiKey.clinic_id == clinic_id,
+            AgentApiKey.label == "demo-agent",
+            AgentApiKey.key_hash != key_hash,
+        )
+        .values(is_active=False)
+    )
+
+    existing = await session.scalar(select(AgentApiKey).where(AgentApiKey.key_hash == key_hash))
+    if existing is None:
         session.add(
             AgentApiKey(
                 clinic_id=clinic_id,
@@ -184,6 +212,9 @@ async def ensure_agent_key(session, clinic_id: UUID) -> None:
                 key_hash=key_hash,
             )
         )
+    else:
+        existing.is_active = True
+        existing.label = "demo-agent"
 
 
 async def main() -> None:
@@ -200,8 +231,8 @@ async def main() -> None:
         await session.commit()
 
     print("Demo clinic seeded.")
-    print(f"Staff login: {DEMO_EMAIL} / {DEMO_PASSWORD}")
-    print(f"Agent service key: {DEMO_AGENT_KEY}")
+    print(f"Staff login email: {DEMO_EMAIL}")
+    print("Staff password and agent key were read from DEMO_STAFF_PASSWORD and DEMO_AGENT_KEY.")
 
 
 if __name__ == "__main__":

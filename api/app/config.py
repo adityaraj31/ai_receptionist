@@ -8,9 +8,7 @@ ROOT_DIR = Path(__file__).resolve().parents[2]
 
 
 class Settings(BaseSettings):
-    database_url: str = (
-        "postgresql+asyncpg://receptionist:receptionist_dev_password@localhost:5432/receptionist"
-    )
+    database_url: str
     database_ssl: str | None = None
     secret_key: str = ""
     access_token_minutes: int = 480

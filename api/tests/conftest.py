@@ -11,19 +11,36 @@ import asyncpg
 import pytest
 import pytest_asyncio
 from alembic.config import Config
+from dotenv import load_dotenv
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
-from sqlalchemy.engine import make_url
+from sqlalchemy.engine import URL, make_url
 
 from alembic import command
 
 API_DIR = Path(__file__).resolve().parents[1]
 
-BASE_DATABASE_URL = os.environ.get(
-    "TEST_DATABASE_URL",
-    "postgresql+asyncpg://receptionist:receptionist_dev_password@localhost:5432/receptionist",
-)
-_base_url = make_url(BASE_DATABASE_URL)
+load_dotenv(API_DIR.parent / ".env")
+load_dotenv(API_DIR / ".env")
+
+TEST_DATABASE_URL_OVERRIDE = os.environ.get("TEST_DATABASE_URL")
+if TEST_DATABASE_URL_OVERRIDE:
+    _base_url = make_url(TEST_DATABASE_URL_OVERRIDE)
+else:
+    pg_password = os.environ.get("POSTGRES_PASSWORD")
+    if not pg_password:
+        raise RuntimeError(
+            "Set TEST_DATABASE_URL or POSTGRES_PASSWORD before running tests (see .env.example)."
+        )
+    _base_url = URL.create(
+        "postgresql+asyncpg",
+        username=os.environ.get("POSTGRES_USER", "receptionist"),
+        password=pg_password,
+        host=os.environ.get("POSTGRES_HOST", "localhost"),
+        port=int(os.environ.get("POSTGRES_PORT", "5432")),
+        database=os.environ.get("POSTGRES_DB", "receptionist"),
+    )
+
 TEST_DATABASE_NAME = os.environ.get("TEST_DB_NAME", f"{_base_url.database}_test")
 TEST_DATABASE_URL = _base_url.set(database=TEST_DATABASE_NAME)
 

@@ -14,7 +14,7 @@ from .clinic import ClinicRead
 from .common import Message, ORMModel
 from .doctor import DoctorCreate, DoctorRead, DoctorUpdate
 from .slot import FreeSlotRead
-from .time_off import TimeOffCreate, TimeOffRead
+from .time_off import TimeOffCreate, TimeOffRead, TimeOffUpdate
 
 __all__ = [
     "AppointmentCreate",
@@ -35,5 +35,6 @@ __all__ = [
     "StaffRead",
     "TimeOffCreate",
     "TimeOffRead",
+    "TimeOffUpdate",
     "TokenResponse",
 ]

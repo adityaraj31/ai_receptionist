@@ -35,7 +35,8 @@ admin dashboard in [`/dashboard`](dashboard).
    ```
 
    Fill in the provider keys you need. The defaults for Postgres and Redis work locally
-   as-is. Never commit `.env`.
+   as-is. Set `SECRET_KEY`, `DATABASE_URL`, `DEMO_STAFF_PASSWORD`, and `DEMO_AGENT_KEY`
+   before running the API or seed. Never commit `.env`.
 
 2. **Start infrastructure**
 
@@ -102,11 +103,12 @@ grouped by provider:
 ## Connecting from the host
 
 ```
-postgresql://receptionist:receptionist_dev_password@localhost:5432/receptionist
+postgresql://receptionist:<local-postgres-password>@localhost:5432/receptionist
 redis://localhost:6379/0
 ```
 
-Change the defaults in `.env` before using anything beyond local development.
+Use the `POSTGRES_PASSWORD` value from your `.env`; no database credentials are
+hardcoded in the application.
 
 ## Run the API
 
@@ -118,9 +120,9 @@ uv run python -m scripts.seed
 uv run uvicorn app.main:app --reload --port 8000
 ```
 
-OpenAPI docs are at <http://localhost:8000/docs>. Demo staff login:
-`admin@demo-clinic.example.com` / `DemoClinic123!`. Demo agent key:
-`demo-agent-key-change-me`. Change both before any shared deployment. See
+OpenAPI docs are at <http://localhost:8000/docs>. The seed reads
+`DEMO_STAFF_EMAIL`, `DEMO_STAFF_PASSWORD`, and `DEMO_AGENT_KEY` from `.env`; set the
+password and key before running it. They are never hardcoded. See
 [api/README.md](api/README.md) for endpoints, auth, slot rules, and cloud Postgres setup.
 
 ## Run the dashboard

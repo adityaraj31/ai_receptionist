@@ -51,6 +51,21 @@ async def test_staff_is_scoped_to_own_clinic(client, auth_headers, doctor, other
     other = await client.get(f"/api/v1/doctors/{other_doctor.id}", headers=auth_headers)
     assert other.status_code == 404
 
+    slots = await client.get(
+        f"/api/v1/doctors/{other_doctor.id}/free-slots?date=2026-10-21",
+        headers=auth_headers,
+    )
+    assert slots.status_code == 404
+
+
+async def test_openapi_documents_auth_and_time_off_update(client):
+    response = await client.get("/openapi.json")
+    assert response.status_code == 200
+
+    document = response.json()
+    assert {"BearerAuth", "ServiceKeyAuth"} <= set(document["components"]["securitySchemes"])
+    assert "patch" in document["paths"]["/api/v1/doctors/{doctor_id}/time-off/{time_off_id}"]
+
 
 async def test_availability_overlap_is_rejected(client, auth_headers, doctor):
     first = await client.post(

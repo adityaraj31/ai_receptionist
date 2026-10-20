@@ -24,8 +24,13 @@ Set these values in `.env`:
 
 ```dotenv
 SECRET_KEY=<long-random-value>
-DATABASE_URL=postgresql+asyncpg://receptionist:receptionist_dev_password@localhost:5432/receptionist
+DATABASE_URL=postgresql+asyncpg://receptionist:<postgres-password>@localhost:5432/receptionist
+DEMO_STAFF_PASSWORD=<strong-demo-password>
+DEMO_AGENT_KEY=<long-random-agent-key>
 ```
+
+`DATABASE_URL` is required; the application has no default credentials. Use the same
+password as `POSTGRES_PASSWORD` from `.env`.
 
 Then:
 
@@ -39,17 +44,19 @@ uv run uvicorn app.main:app --reload --port 8000
 
 OpenAPI docs: <http://localhost:8000/docs>
 
-The seed is idempotent and creates:
+The seed is idempotent and reads credentials from `.env`:
 
+- Staff email: `DEMO_STAFF_EMAIL` (defaults to `admin@demo-clinic.example.com`)
+- Staff password: `DEMO_STAFF_PASSWORD` (required, minimum 12 characters)
+- Agent service key: `DEMO_AGENT_KEY` (required, minimum 24 characters)
 - Clinic: `Demo Family Clinic` (`Asia/Kolkata`)
-- Staff: `admin@demo-clinic.example.com` / `DemoClinic123!`
-- Agent service key: `demo-agent-key-change-me`
 - Doctors with weekly availability:
   - Dr. Asha Rao, General Medicine
   - Dr. Vikram Shah, Pediatrics
   - Dr. Meera Iyer, Dermatology
 
-Change the demo password and service key before any shared or production deployment.
+The seed replaces the demo staff password and deactivates the previous demo agent key
+when either value changes. Credentials are never written to source code or seed output.
 
 ## Cloud Postgres
 
@@ -62,6 +69,9 @@ DATABASE_URL=postgresql://postgres:<password>@<host>:5432/postgres?sslmode=requi
 The app accepts `postgresql://` or `postgresql+asyncpg://`, converts it for asyncpg,
 and extracts `sslmode` into the asyncpg SSL setting. Migrations and tests never use
 SQLite because the schema relies on PostgreSQL constraints.
+
+The Alembic migrations enable `btree_gist` and `vector` (pgvector). Supabase and Neon
+support both extensions; no manual extension setup is required.
 
 Apply the schema and seed once against the cloud database:
 
@@ -107,6 +117,7 @@ X-Service-Key: <service-key>
 | `DELETE` | `/api/v1/doctors/{id}/availability/{rule_id}` | staff | Delete rule |
 | `GET` | `/api/v1/doctors/{id}/time-off` | staff | List time off |
 | `POST` | `/api/v1/doctors/{id}/time-off` | staff | Create time off |
+| `PATCH` | `/api/v1/doctors/{id}/time-off/{time_off_id}` | staff | Update time off |
 | `DELETE` | `/api/v1/doctors/{id}/time-off/{time_off_id}` | staff | Delete time off |
 | `GET` | `/api/v1/doctors/{id}/free-slots?date=YYYY-MM-DD` | staff or agent | Computed free slots |
 | `POST` | `/api/v1/appointments` | staff or agent | Book appointment |
@@ -146,8 +157,12 @@ for that clinic and phone number, or creates one.
 ```bash
 cd api
 uv run ruff check .
+uv run ruff format --check .
 uv run pytest
 ```
 
-Tests create a separate `receptionist_test` database, apply the real Alembic migration,
-and truncate between tests. Override the test server with `TEST_DATABASE_URL` if needed.
+Tests load the repository-root `.env` and use either `TEST_DATABASE_URL` or a local
+database built from `POSTGRES_*`. They create a separate `*_test` database, apply the
+real Alembic migrations, and truncate between tests. Tests never fall back to the
+production `DATABASE_URL`. No database credentials are hardcoded in the application or
+test suite.

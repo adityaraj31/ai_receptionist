@@ -25,6 +25,19 @@ class TimeOffCreate(BaseModel):
         return self
 
 
+class TimeOffUpdate(BaseModel):
+    starts_at: datetime | None = None
+    ends_at: datetime | None = None
+    reason: str | None = Field(default=None, max_length=500)
+
+    @field_validator("starts_at", "ends_at")
+    @classmethod
+    def require_timezone(cls, value: datetime | None) -> datetime | None:
+        if value is not None and value.tzinfo is None:
+            raise ValueError("datetime must include a timezone")
+        return value
+
+
 class TimeOffRead(ORMModel):
     id: UUID
     doctor_id: UUID

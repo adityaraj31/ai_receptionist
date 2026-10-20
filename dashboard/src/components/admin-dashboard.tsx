@@ -553,9 +553,6 @@ export function AdminDashboard() {
           >
             {busy ? "Signing in…" : "Open dashboard"}
           </button>
-          <p className="mt-3 text-xs text-slate-500">
-            Demo: admin@demo-clinic.example.com / DemoClinic123!
-          </p>
         </form>
 
         {error ? (

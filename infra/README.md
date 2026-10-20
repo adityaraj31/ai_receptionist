@@ -25,7 +25,8 @@ The first migration creates:
 - `patients`, `appointments`
 - `calls`, `transcripts`, `call_events`, `evaluations`
 
-It also enables `btree_gist` for the appointment and time-off exclusion constraints.
+It also enables `btree_gist` for the appointment and time-off exclusion constraints
+and `vector` (pgvector) for future FAQ retrieval.
 
 To apply schema changes against a cloud database, set `DATABASE_URL` in `.env` and run
 the same `uv run alembic upgrade head` command.

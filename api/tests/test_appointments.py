@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import time
+from datetime import date, time, timedelta
 from uuid import uuid4
 
 import pytest
@@ -267,6 +267,21 @@ async def test_same_patient_phone_is_reused(
 
     count = await db_session.scalar(select(func.count()).select_from(Patient))
     assert count == 1
+
+
+async def test_booking_a_past_day_is_rejected(client, db_session, doctor, agent_headers, at_time):
+    day = date.today() - timedelta(days=1)
+    await add_rule(db_session, doctor, day)
+
+    response = await book(
+        client,
+        agent_headers,
+        doctor,
+        at_time(day, 9, 0),
+        at_time(day, 9, 15),
+    )
+    assert response.status_code == 409
+    assert response.json()["detail"] == "Selected slot is not available"
 
 
 async def test_database_exclusion_constraint_blocks_overlaps(

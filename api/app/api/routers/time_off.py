@@ -6,7 +6,7 @@ from sqlalchemy.exc import IntegrityError
 
 from ...db import SessionDep
 from ...models import TimeOff
-from ...schemas import TimeOffCreate, TimeOffRead
+from ...schemas import TimeOffCreate, TimeOffRead, TimeOffUpdate
 from ...services.common import get_doctor_or_404
 from ..deps import CurrentStaff
 
@@ -68,6 +68,58 @@ async def create_time_off(
     doctor = await get_doctor_or_404(session, doctor_id, staff.clinic_id, include_inactive=True)
     entry = TimeOff(doctor_id=doctor.id, **payload.model_dump())
     session.add(entry)
+
+    try:
+        await session.commit()
+    except IntegrityError as exc:
+        await session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This time off overlaps an existing entry",
+        ) from exc
+
+    await session.refresh(entry)
+    return entry
+
+
+@router.patch(
+    "/{time_off_id}",
+    response_model=TimeOffRead,
+    summary="Update doctor time off",
+    responses={
+        404: {"description": "Time off not found"},
+        409: {"description": "This time off overlaps an existing entry"},
+        422: {"description": "Invalid time range"},
+    },
+)
+async def update_time_off(
+    doctor_id: UUID,
+    time_off_id: UUID,
+    payload: TimeOffUpdate,
+    staff: CurrentStaff,
+    session: SessionDep,
+) -> TimeOff:
+    await get_doctor_or_404(session, doctor_id, staff.clinic_id, include_inactive=True)
+    entry = await _get_time_off_or_404(session, doctor_id, time_off_id)
+    values = payload.model_dump(exclude_unset=True)
+
+    if any(values.get(field) is None for field in ("starts_at", "ends_at") if field in values):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="starts_at and ends_at cannot be null",
+        )
+
+    if values.get("reason") is None and "reason" in values:
+        values["reason"] = ""
+
+    for field, value in values.items():
+        setattr(entry, field, value)
+
+    if entry.ends_at <= entry.starts_at:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="ends_at must be after starts_at",
+        )
 
     try:
         await session.commit()
