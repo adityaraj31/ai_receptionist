@@ -10,6 +10,7 @@ from .availability import (
     AvailabilityRuleRead,
     AvailabilityRuleUpdate,
 )
+from .clinic import ClinicRead
 from .common import Message, ORMModel
 from .doctor import DoctorCreate, DoctorRead, DoctorUpdate
 from .slot import FreeSlotRead
@@ -22,6 +23,7 @@ __all__ = [
     "AvailabilityRuleCreate",
     "AvailabilityRuleRead",
     "AvailabilityRuleUpdate",
+    "ClinicRead",
     "DoctorCreate",
     "DoctorRead",
     "DoctorUpdate",

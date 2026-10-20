@@ -123,6 +123,21 @@ OpenAPI docs are at <http://localhost:8000/docs>. Demo staff login:
 `demo-agent-key-change-me`. Change both before any shared deployment. See
 [api/README.md](api/README.md) for endpoints, auth, slot rules, and cloud Postgres setup.
 
+## Run the dashboard
+
+```bash
+cd dashboard
+npm install
+npm run dev
+```
+
+Open <http://localhost:3000> and sign in with the demo staff credentials. The dashboard
+authenticates with the staff JWT and lets you manage doctors, weekly availability, time
+off, free slots, and appointments. It calls the API at `NEXT_PUBLIC_API_URL`, which
+defaults to `http://localhost:8000`; copy `.env.example` to `.env.local` to override it.
+The API must allow the dashboard origin via `DASHBOARD_URL` (default
+`http://localhost:3000`). Use `npm run typecheck` and `npm run build` before deploying.
+
 ## Run the voice agent
 
 ```bash
@@ -138,6 +153,6 @@ for required keys, browser testing, and latency log fields.
 ## Next steps
 
 1. Wire the agent tools to the API (slots, booking, reschedule, cancel).
-2. Update the dashboard to staff JWT login and the new clinic-scoped endpoints.
-3. Call ingestion, transcripts, evals, and dashboard analytics.
-4. FAQ RAG with pgvector, WhatsApp/SMS confirmations, and post-call jobs.
+2. Call ingestion, transcripts, evals, and dashboard analytics.
+3. FAQ RAG with pgvector, WhatsApp/SMS confirmations, and post-call jobs.
+4. Recordings, transcripts, summaries, and cost tracking after each call.

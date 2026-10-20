@@ -95,6 +95,7 @@ X-Service-Key: <service-key>
 | `GET` | `/health` | none | API and database health |
 | `POST` | `/api/v1/auth/login` | none | Staff login |
 | `GET` | `/api/v1/auth/me` | staff | Current staff user |
+| `GET` | `/api/v1/clinic` | staff | Logged-in staff member's clinic |
 | `GET` | `/api/v1/doctors` | staff | List doctors |
 | `POST` | `/api/v1/doctors` | staff | Create doctor |
 | `GET` | `/api/v1/doctors/{id}` | staff | Get doctor |

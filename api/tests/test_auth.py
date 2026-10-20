@@ -32,6 +32,13 @@ async def test_protected_routes_require_auth(client):
     assert response.status_code == 401
 
 
+async def test_get_clinic_is_scoped_to_staff(client, auth_headers, clinic):
+    response = await client.get("/api/v1/clinic", headers=auth_headers)
+    assert response.status_code == 200
+    assert response.json()["id"] == str(clinic.id)
+    assert response.json()["timezone"] == "Asia/Kolkata"
+
+
 async def test_agent_key_cannot_use_staff_routes(client, agent_headers):
     response = await client.get("/api/v1/doctors", headers=agent_headers)
     assert response.status_code == 401

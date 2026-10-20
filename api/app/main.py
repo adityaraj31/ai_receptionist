@@ -3,13 +3,23 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .api.routers import appointments, auth, availability, doctors, health, slots, time_off
+from .api.routers import (
+    appointments,
+    auth,
+    availability,
+    clinic,
+    doctors,
+    health,
+    slots,
+    time_off,
+)
 from .config import settings
 from .db import engine
 
 TAGS_METADATA = [
     {"name": "Health", "description": "Service and database health checks."},
     {"name": "Auth", "description": "Staff login and current-user lookup."},
+    {"name": "Clinic", "description": "Clinic profile for the logged-in staff user."},
     {
         "name": "Doctors",
         "description": "Clinic-scoped doctor management. Requires a staff JWT.",
@@ -59,6 +69,7 @@ app.add_middleware(
 
 app.include_router(health.router)
 app.include_router(auth.router, prefix="/api/v1")
+app.include_router(clinic.router, prefix="/api/v1")
 app.include_router(doctors.router, prefix="/api/v1")
 app.include_router(availability.router, prefix="/api/v1")
 app.include_router(time_off.router, prefix="/api/v1")
