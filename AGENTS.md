@@ -18,8 +18,9 @@ Caller -> PSTN -> Exotel/Plivo -> SIP trunk -> LiveKit SIP -> LiveKit Room
 - STT/TTS: Sarvam AI (Hindi + English); Deepgram as English fallback
 - VAD / turn detection: Silero VAD + LiveKit turn detector
 - LLM: fast tool-calling model, configurable via env (`LLM_MODEL`)
-- Backend: FastAPI
-- DB: PostgreSQL + pgvector (FAQ RAG)
+- Backend: FastAPI + SQLAlchemy 2 (async) + Alembic
+- DB: PostgreSQL + pgvector (FAQ RAG); cloud via `DATABASE_URL` (Supabase/Neon)
+- Auth: staff email/password -> JWT; voice agent -> `X-Service-Key`
 - Queue: Redis + Arq (post-call jobs)
 - Storage: S3-compatible (recordings), use Cloudflare R2 or S3 Mumbai
 - Messaging: WhatsApp Business API (Meta Cloud API or Gupshup), SMS via Exotel/Plivo
@@ -44,6 +45,10 @@ Caller -> PSTN -> Exotel/Plivo -> SIP trunk -> LiveKit SIP -> LiveKit Room
 - Config via environment variables only. Never hardcode keys. Keep `.env.example` updated.
 - Every external call (STT, LLM, TTS, calendar, WhatsApp) must have timeouts and error handling. A call must never go silent.
 - Log a structured event for each call stage into `call_events` with timestamps (used for latency analysis).
+- Clinic config (name, doctors, availability) is loaded from Postgres (`clinics`, `doctors`, `availability_rules`); `CLINIC_*` env values are a local fallback only.
+- Schema changes go through Alembic in `/api/alembic`; do not add ad-hoc SQL migrations.
+- Every staff query must be scoped by the `clinic_id` from the JWT. The voice agent must use its clinic-scoped service key.
+- Appointment writes must check computed free slots and rely on the database exclusion constraint as the final double-booking guard.
 - Before using LiveKit, Sarvam or any SDK, check the current official docs. APIs change; do not rely on memory.
 
 ## Voice agent rules
@@ -71,7 +76,9 @@ Tool outputs must be short and structured so the LLM can answer in one sentence.
 
 ## Data model (core tables)
 
-`clinics`, `doctors`, `patients`, `appointments`, `calls` (id, from_number, duration, language, recording_url, cost, status), `transcripts`, `call_events`, `evaluations`.
+`clinics`, `staff_users`, `agent_api_keys`, `doctors`, `availability_rules`, `time_off`, `patients`, `appointments` (clinic-scoped, with overlap exclusion), `calls` (id, from_number, duration, language, recording_url, cost, status), `transcripts`, `call_events`, `evaluations`.
+
+Free slots = weekly availability minus time off minus non-cancelled appointments. Appointments must align to generated slots; a GiST exclusion constraint blocks overlapping bookings even under concurrent requests.
 
 ## Compliance (India)
 

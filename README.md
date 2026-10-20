@@ -16,9 +16,9 @@ See [AGENTS.md](AGENTS.md) for architecture, conventions, and the working agreem
 /docs        Architecture notes, runbooks
 ```
 
-The local infrastructure (Postgres + pgvector, Redis) is ready to use, and the first
-agent slice is implemented in [`/agent`](agent/README.md). Other modules are not
-scaffolded yet.
+The local infrastructure (Postgres + pgvector, Redis) is ready to use. The voice agent
+lives in [`/agent`](agent/README.md), the clinic API in [`/api`](api/README.md), and the
+admin dashboard in [`/dashboard`](dashboard).
 
 ## Prerequisites
 
@@ -55,7 +55,21 @@ scaffolded yet.
    docker compose exec db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "\dx"'
    ```
 
-   The output should list the `vector` extension.
+   The output should list the `vector` extension. The clinic schema is managed by
+   Alembic from the API module:
+
+   ```bash
+   cd api
+   uv sync
+   uv run alembic upgrade head
+   uv run python -m scripts.seed
+   ```
+
+   The seed creates a demo clinic, three doctors with availability, a staff login, and
+   an agent service key. The agent loads clinic config from Postgres and falls back to
+   `CLINIC_*` env values only when the database is unavailable or has no active clinic.
+   See [api/README.md](api/README.md), [infra/README.md](infra/README.md), and
+   [agent/README.md](agent/README.md).
 
 4. **Check health and logs**
 
@@ -94,12 +108,27 @@ redis://localhost:6379/0
 
 Change the defaults in `.env` before using anything beyond local development.
 
+## Run the API
+
+```bash
+cd api
+uv sync
+uv run alembic upgrade head
+uv run python -m scripts.seed
+uv run uvicorn app.main:app --reload --port 8000
+```
+
+OpenAPI docs are at <http://localhost:8000/docs>. Demo staff login:
+`admin@demo-clinic.example.com` / `DemoClinic123!`. Demo agent key:
+`demo-agent-key-change-me`. Change both before any shared deployment. See
+[api/README.md](api/README.md) for endpoints, auth, slot rules, and cloud Postgres setup.
+
 ## Run the voice agent
 
 ```bash
 cd agent
 uv sync
-uv run python src/receptionist_agent.py dev
+uv run python -m src.receptionist_agent dev
 ```
 
 Then open the [LiveKit Agents Playground](https://agents-playground.livekit.io/) and
@@ -108,7 +137,7 @@ for required keys, browser testing, and latency log fields.
 
 ## Next steps
 
-1. Agent tools: calendar booking, FAQ, human transfer.
-2. API slice: appointments, calls, webhooks, dashboard endpoints.
-3. Dashboard slice: call list, transcripts, analytics.
-4. FAQ RAG, WhatsApp/SMS, post-call jobs and evals.
+1. Wire the agent tools to the API (slots, booking, reschedule, cancel).
+2. Update the dashboard to staff JWT login and the new clinic-scoped endpoints.
+3. Call ingestion, transcripts, evals, and dashboard analytics.
+4. FAQ RAG with pgvector, WhatsApp/SMS confirmations, and post-call jobs.

@@ -29,6 +29,9 @@ from livekit.agents import (
 )
 from livekit.plugins import openai, sarvam, silero
 
+from clinic_repository import load_clinic_config_from_db
+from prompts import ClinicConfig, build_system_prompt, load_clinic_config
+
 AGENT_DIR = Path(__file__).resolve().parents[1]
 ROOT_DIR = AGENT_DIR.parent
 load_dotenv(AGENT_DIR / ".env")
@@ -58,25 +61,6 @@ def log_event(event: str, **fields: Any) -> None:
 
 def _ms(seconds: float | None) -> float | None:
     return round(seconds * 1000, 1) if seconds is not None else None
-
-
-def build_instructions(clinic_name: str) -> str:
-    return f"""You are the AI phone receptionist for {clinic_name}, a medical clinic in India.
-
-Rules:
-- You are an AI. Never claim to be a human.
-- Reply in the caller's language: Hindi, English, or Hinglish. Match the language of their
-  most recent message.
-- Keep every reply to 1-2 short spoken sentences. No lists, markdown, or emojis.
-- Never give medical advice, diagnoses, or medicine suggestions. You only help with
-  appointments, clinic information, and taking a message.
-- Read back critical details to confirm them: patient name, date, time, and phone number.
-- If the caller asks for a human, describes a medical emergency, is clearly frustrated, or
-  you fail to understand them twice, say a clinic team member will call them back and ask
-  for the best number.
-- If the caller declines recording consent, acknowledge it and continue helping.
-- If you do not know something, say so and offer to have the clinic call back.
-"""
 
 
 def prewarm(proc: JobProcess) -> None:
@@ -149,6 +133,21 @@ def _on_conversation_item(event: ConversationItemAddedEvent) -> None:
     )
 
 
+async def _resolve_clinic_config() -> tuple[ClinicConfig, str]:
+    database_url = os.getenv("DATABASE_URL", "")
+    clinic_id = (os.getenv("CLINIC_ID") or "").strip() or None
+    if database_url:
+        try:
+            config = await load_clinic_config_from_db(database_url, clinic_id)
+            if config is not None:
+                return config, "database"
+            log_event("clinic_config_missing", clinic_id=clinic_id)
+        except Exception as exc:
+            log_event("clinic_config_db_error", error=repr(exc))
+
+    return load_clinic_config(), "environment"
+
+
 def _build_session(vad: silero.VAD) -> AgentSession:
     stt = sarvam.STT(
         language=os.getenv("SARVAM_STT_LANGUAGE", "unknown"),
@@ -205,13 +204,16 @@ async def receptionist(ctx: JobContext) -> None:
     if missing:
         raise RuntimeError(f"Missing required environment variables: {', '.join(missing)}")
 
-    clinic_name = os.getenv("CLINIC_NAME", "Aarogya Clinic")
+    clinic_config, config_source = await _resolve_clinic_config()
     session = _build_session(ctx.proc.userdata["vad"])
 
     log_event(
         "session_started",
         room=ctx.room.name,
-        clinic=clinic_name,
+        clinic=clinic_config.name,
+        config_source=config_source,
+        doctors=len(clinic_config.doctors),
+        timings=len(clinic_config.timings),
         stt_model=os.getenv("SARVAM_STT_MODEL", "saaras:v4"),
         llm_model=os.getenv("LLM_MODEL", "gpt-4.1-mini"),
         tts_model=os.getenv("SARVAM_TTS_MODEL", "bulbul:v3"),
@@ -219,12 +221,12 @@ async def receptionist(ctx: JobContext) -> None:
     )
 
     await session.start(
-        agent=Agent(instructions=build_instructions(clinic_name)),
+        agent=Agent(instructions=build_system_prompt(clinic_config)),
         room=ctx.room,
     )
 
     greeting = (
-        f"Namaste! Main {clinic_name} ka AI receptionist hoon. "
+        f"Namaste! Main {clinic_config.name} ka AI receptionist hoon. "
         "I can help in Hindi or English. This call may be recorded for quality. "
         "Kya aap isse theek hain? How can I help you?"
     )

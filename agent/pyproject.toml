@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "LiveKit Agents voice worker for the AI Receptionist"
 requires-python = ">=3.11"
 dependencies = [
+    "asyncpg>=0.30",
     "livekit-agents[sarvam,silero,openai]~=1.8",
     "python-dotenv>=1.0",
 ]
@@ -25,5 +26,5 @@ target-version = "py311"
 select = ["E", "F", "I", "UP", "B", "SIM"]
 
 [tool.pytest.ini_options]
-pythonpath = ["src"]
+pythonpath = [".", "src"]
 testpaths = ["tests"]

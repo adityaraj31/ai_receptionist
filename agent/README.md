@@ -45,17 +45,68 @@ LLM_MODEL=gpt-4.1-mini
 Set `SARVAM_LANGUAGE=hi-IN` or `en-IN` to choose the TTS voice language. The LLM mirrors
 the caller's language (Hindi, English, or Hinglish) in its replies.
 
+## Clinic config and prompt
+
+The system prompt lives in [`prompts.py`](prompts.py). Clinic-specific values are
+not hardcoded in the prompt: `build_system_prompt(ClinicConfig)` injects them at runtime.
+
+Clinic config is loaded from Postgres first. If `DATABASE_URL` is unset, the database is
+unreachable, or no active clinic exists, the agent falls back to the environment values
+below. Set `CLINIC_ID` to a clinic UUID to pin one clinic; leave it empty for the first
+active clinic.
+
+The schema is managed by Alembic in [`../api/alembic`](../api/alembic). Apply the
+migration and seed demo data from the repository root:
+
+```bash
+cd api
+uv sync
+uv run alembic upgrade head
+uv run python -m scripts.seed  # optional demo clinic/doctors/availability
+```
+
+The agent reads:
+
+- `clinics` - name, timezone, address, phone.
+- `doctors` - doctor name and specialization (`is_active` filters rows).
+- `availability_rules` - weekly windows (`weekday`, `start_time`, `end_time`); these
+  produce the doctor days/hours and clinic open hours in the prompt.
+
+Bookings and slot checks are not wired into the agent yet. Use the API service key when
+they are added; do not write appointments directly from the agent.
+
+Environment fallback values:
+
+```dotenv
+CLINIC_NAME=Aarogya Clinic
+CLINIC_TIMEZONE=Asia/Kolkata
+CLINIC_ADDRESS=
+CLINIC_PHONE=
+CLINIC_FEES=General consultation: INR 500
+CLINIC_EMERGENCY_NUMBER=108
+CLINIC_DOCTORS='[{"name":"Dr. Asha Rao","specialty":"General Physician","days":"Mon, Wed, Fri","hours":"10:00-13:00"}]'
+CLINIC_TIMINGS='{"Monday":"09:00-18:00","Saturday":"09:00-14:00","Sunday":"Closed"}'
+```
+
+`CLINIC_DOCTORS` is a JSON list; each item can be a name or an object with `name`,
+`specialty`, `days`, and `hours`. `CLINIC_TIMINGS` is a JSON object mapping weekday to
+hours. If doctors or timings are missing, the prompt tells the model not to invent them.
+
+Example evaluation conversations are in [`../evals/conversations.yaml`](../evals/conversations.yaml).
+
 ## Run
 
 ```bash
 cd agent
 uv sync
-uv run python src/receptionist_agent.py dev
+uv run python -m src.receptionist_agent dev
 ```
 
 The worker registers with LiveKit under the agent name `ai-receptionist` (configurable via
-`LIVEKIT_AGENT_NAME`). The Python CLI prints a deprecation warning for `dev` mode; it
-still works. If you have the LiveKit CLI installed, `lk agent dev` is the newer path.
+`LIVEKIT_AGENT_NAME`). Use `python -m src.receptionist_agent` rather than
+`python src/receptionist_agent.py` so the root-level `prompts.py` is importable. The Python
+CLI prints a deprecation warning for `dev` mode; it still works. If you have the LiveKit
+CLI installed, `lk agent dev` is the newer path.
 
 ## Test in the browser
 
