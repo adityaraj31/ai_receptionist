@@ -18,6 +18,8 @@ class Doctor:
     specialty: str = ""
     days: str = ""
     hours: str = ""
+    id: str = ""
+    fee: str = ""
 
 
 @dataclass(frozen=True)
@@ -72,6 +74,8 @@ def _parse_doctors(raw: str) -> tuple[Doctor, ...]:
                 specialty=str(item.get("specialty", "")).strip(),
                 days=str(item.get("days", "")).strip(),
                 hours=str(item.get("hours", "")).strip(),
+                id=str(item.get("id", "")).strip(),
+                fee=str(item.get("fee", "")).strip(),
             )
         )
     return tuple(doctors)
@@ -105,6 +109,8 @@ def _format_doctors(doctors: tuple[Doctor, ...]) -> str:
             details.append(doctor.days)
         if doctor.hours:
             details.append(doctor.hours)
+        if doctor.fee:
+            details.append(f"Fee INR {doctor.fee}")
         lines.append("- " + " | ".join(details))
     return "\n".join(lines)
 
@@ -179,8 +185,14 @@ Ask for one item at a time. Do not ask for a diagnosis or detailed medical histo
 Before confirming, read back the name, phone number, date, time, and doctor.
 Use a tool to check availability and book. Never claim an appointment is booked,
 rescheduled, or cancelled unless a tool confirms it.
-If no booking tool is available or a tool fails, apologize briefly, take the details,
-and say the clinic team will call back to confirm.
+Call `check_availability` with a date as `YYYY-MM-DD` and the doctor's name. Call
+`book_appointment` with the patient name, phone, doctor name, and a local start time as
+`YYYY-MM-DDTHH:MM`. Call `reschedule_appointment` or `cancel_appointment` with the
+appointment reference you were given.
+If a tool returns `ok=false`, do not stay silent. Briefly apologize, use the `say` or
+`message` value from the tool result, take the caller's details, and say the clinic team
+will call back to confirm. If no booking tool is available or a tool fails, apologize
+briefly, take the details, and say the clinic team will call back to confirm.
 After a successful booking, say whether a WhatsApp or SMS confirmation was actually sent.
 Never promise a confirmation channel that was not used.
 

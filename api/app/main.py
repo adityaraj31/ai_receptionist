@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .api.routers import (
+    agent,
     appointments,
     auth,
     availability,
@@ -80,6 +81,7 @@ app.add_middleware(
 
 app.include_router(health.router)
 app.include_router(auth.router, prefix="/api/v1")
+app.include_router(agent.router, prefix="/api/v1")
 app.include_router(invitations.router, prefix="/api/v1")
 app.include_router(staff.router, prefix="/api/v1")
 app.include_router(clinic.router, prefix="/api/v1")

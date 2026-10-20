@@ -68,10 +68,10 @@ async def list_appointments(
 )
 async def get_appointment(
     appointment_id: UUID,
-    staff: CurrentStaff,
+    principal: AnyPrincipal,
     session: SessionDep,
 ) -> AppointmentRead:
-    appointment = await get_appointment_or_404(session, appointment_id, staff.clinic_id)
+    appointment = await get_appointment_or_404(session, appointment_id, principal.clinic_id)
     return appointment_to_read(appointment)
 
 

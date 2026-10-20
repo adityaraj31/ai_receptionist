@@ -40,6 +40,9 @@ LLM_API_KEY=...
 LLM_MODEL=gpt-4.1-mini
 # Optional for OpenAI-compatible providers:
 # LLM_BASE_URL=https://...
+# Calendar tools (optional: agent falls back to DB/env config without them):
+AGENT_API_URL=http://localhost:8000
+AGENT_API_KEY=...  # falls back to DEMO_AGENT_KEY
 ```
 
 Set `SARVAM_LANGUAGE=hi-IN` or `en-IN` to choose the TTS voice language. The LLM mirrors
@@ -50,10 +53,17 @@ the caller's language (Hindi, English, or Hinglish) in its replies.
 The system prompt lives in [`prompts.py`](prompts.py). Clinic-specific values are
 not hardcoded in the prompt: `build_system_prompt(ClinicConfig)` injects them at runtime.
 
-Clinic config is loaded from Postgres first. If `DATABASE_URL` is unset, the database is
-unreachable, or no active clinic exists, the agent falls back to the environment values
-below. Set `CLINIC_ID` to a clinic UUID to pin one clinic; leave it empty for the first
-active clinic.
+Clinic config is resolved at the start of every call in this order:
+
+1. `GET {AGENT_API_URL}/api/v1/agent/clinic-config` with the `X-Service-Key` header
+   (`AGENT_API_KEY`, falling back to `DEMO_AGENT_KEY`). This is the source for doctor IDs
+   and availability used by the calendar tools.
+2. Postgres directly, if `DATABASE_URL` is set and the API is unreachable.
+3. `CLINIC_*` environment values below.
+
+Set `CLINIC_ID` to a clinic UUID to pin one clinic; leave it empty for the first active
+clinic. When the API is used, non-clinic fields the API does not store (fees, emergency
+number) still come from the environment fallback.
 
 The schema is managed by Alembic in [`../api/alembic`](../api/alembic). Apply the
 migration and seed demo data from the repository root:
@@ -72,8 +82,27 @@ The agent reads:
 - `availability_rules` - weekly windows (`weekday`, `start_time`, `end_time`); these
   produce the doctor days/hours and clinic open hours in the prompt.
 
-Bookings and slot checks are not wired into the agent yet. Use the API service key when
-they are added; do not write appointments directly from the agent.
+## Calendar tools
+
+[`agent_tools.py`](agent_tools.py) exposes four function tools to the LLM. They call the
+FastAPI backend through [`api_client.py`](api_client.py) using the clinic-scoped service
+key, so the agent never writes to Postgres directly.
+
+| Tool | API call |
+| --- | --- |
+| `check_availability(date, doctor)` | `GET /api/v1/doctors/{id}/free-slots?date=` |
+| `book_appointment(patient_name, phone, doctor, datetime)` | `POST /api/v1/appointments` |
+| `reschedule_appointment(appointment_id, datetime)` | `PATCH /api/v1/appointments/{id}/reschedule` |
+| `cancel_appointment(appointment_id)` | `POST /api/v1/appointments/{id}/cancel` |
+
+`date` is `YYYY-MM-DD`; `datetime` is clinic-local `YYYY-MM-DDTHH:MM`. The tools match the
+requested time against the computed free slots and let the database exclusion constraint
+be the final double-booking guard.
+
+Tool results are short JSON. Every failure returns `{"ok": false, "reason", "say"}`, where
+`say` is a one-line spoken fallback, so a slow or down API never leaves the caller in
+silence. A missing `AGENT_API_KEY`/`DEMO_AGENT_KEY` is logged as `agent_api_key_missing`
+and the tools degrade to the fallback lines.
 
 Environment fallback values:
 
@@ -136,7 +165,9 @@ Per-provider events are also logged:
 | `llm_metrics` | `ttft_ms`, `duration_ms`, token counts, `tokens_per_second` |
 | `tts_metrics` | `ttfb_ms`, `duration_ms`, `audio_ms`, `characters` |
 | `turn_latency` | `e2e_ms` plus the per-stage breakdown above |
-| `session_started` | room, models, TTS language |
+| `session_started` | room, models, TTS language, `config_source`, `tools` |
+| `clinic_config_api_error` / `clinic_config_db_error` | fallback reason |
+| `agent_api_key_missing` | tools will use spoken fallbacks |
 | `stt_error` / `llm_error` / `tts_error` | provider error details |
 
 `e2e_ms` approximates `stt_transcription + end_of_turn + llm_ttft + tts_ttfb`. Use the
@@ -173,5 +204,5 @@ uv run pytest
 - Sarvam's current docs recommend `STTRealtime` with server-side turn detection for new
   builds. This slice intentionally uses the legacy streaming `STT` with Silero VAD because
   the requested pipeline requires Silero VAD; revisit this before production.
-- No tools (calendar, FAQ, transfer, WhatsApp) are wired yet. This slice only proves the
-  voice pipeline and greeting.
+- Calendar tools (availability, book, reschedule, cancel) are wired. FAQ, transfer,
+  WhatsApp/SMS, and CRM tools are not yet.

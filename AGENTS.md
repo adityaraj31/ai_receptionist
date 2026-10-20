@@ -74,6 +74,13 @@ Caller -> PSTN -> Exotel/Plivo -> SIP trunk -> LiveKit SIP -> LiveKit Room
 
 Tool outputs must be short and structured so the LLM can answer in one sentence.
 
+Calendar tools are implemented in `/agent` (`agent_tools.py` + `api_client.py`). They call
+`/api` with the `X-Service-Key` header (`AGENT_API_URL` / `AGENT_API_KEY`, falling back to
+`DEMO_AGENT_KEY`) and never write appointments directly to Postgres. At call start the agent
+loads doctors/availability from `GET /api/v1/agent/clinic-config` (service key); Postgres
+and `CLINIC_*` env are fallbacks. On any tool failure the agent returns `ok=false` plus a
+short `say` line so the call never goes silent.
+
 ## Data model (core tables)
 
 `clinics`, `staff_users`, `staff_invitations`, `agent_api_keys`, `doctors`, `availability_rules`, `time_off`, `patients`, `appointments` (clinic-scoped, with overlap exclusion), `calls` (id, from_number, duration, language, recording_url, cost, status), `transcripts`, `call_events`, `evaluations`.

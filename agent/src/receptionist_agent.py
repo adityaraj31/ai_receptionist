@@ -16,7 +16,6 @@ from typing import Any
 
 from dotenv import load_dotenv
 from livekit.agents import (
-    Agent,
     AgentServer,
     AgentSession,
     ConversationItemAddedEvent,
@@ -29,8 +28,10 @@ from livekit.agents import (
 )
 from livekit.plugins import openai, sarvam, silero
 
-from clinic_repository import load_clinic_config_from_db
-from prompts import ClinicConfig, build_system_prompt, load_clinic_config
+from agent_tools import ReceptionistAgent
+from api_client import AgentApiClient
+from clinic_repository import build_config_from_api_payload, load_clinic_config_from_db
+from prompts import ClinicConfig, load_clinic_config
 
 AGENT_DIR = Path(__file__).resolve().parents[1]
 ROOT_DIR = AGENT_DIR.parent
@@ -133,7 +134,29 @@ def _on_conversation_item(event: ConversationItemAddedEvent) -> None:
     )
 
 
-async def _resolve_clinic_config() -> tuple[ClinicConfig, str]:
+def _agent_api_credentials() -> tuple[str, str]:
+    url = os.getenv("AGENT_API_URL", "http://localhost:8000").strip()
+    key = (os.getenv("AGENT_API_KEY") or os.getenv("DEMO_AGENT_KEY") or "").strip()
+    return url, key
+
+
+def _agent_api_timeout() -> float:
+    try:
+        return float(os.getenv("AGENT_API_TIMEOUT_SECONDS", "8"))
+    except ValueError:
+        return 8.0
+
+
+async def _resolve_clinic_config(api: AgentApiClient) -> tuple[ClinicConfig, str]:
+    fallback = load_clinic_config()
+
+    if api.api_key:
+        try:
+            payload = await api.get_clinic_config()
+            return build_config_from_api_payload(payload, fallback), "api"
+        except Exception as exc:
+            log_event("clinic_config_api_error", error=repr(exc))
+
     database_url = os.getenv("DATABASE_URL", "")
     clinic_id = (os.getenv("CLINIC_ID") or "").strip() or None
     if database_url:
@@ -145,7 +168,7 @@ async def _resolve_clinic_config() -> tuple[ClinicConfig, str]:
         except Exception as exc:
             log_event("clinic_config_db_error", error=repr(exc))
 
-    return load_clinic_config(), "environment"
+    return fallback, "environment"
 
 
 def _build_session(vad: silero.VAD) -> AgentSession:
@@ -204,7 +227,13 @@ async def receptionist(ctx: JobContext) -> None:
     if missing:
         raise RuntimeError(f"Missing required environment variables: {', '.join(missing)}")
 
-    clinic_config, config_source = await _resolve_clinic_config()
+    api_url, api_key = _agent_api_credentials()
+    api = AgentApiClient(api_url, api_key, timeout=_agent_api_timeout())
+    ctx.add_shutdown_callback(api.aclose)
+    if not api_key:
+        log_event("agent_api_key_missing", agent_api_url=api_url)
+
+    clinic_config, config_source = await _resolve_clinic_config(api)
     session = _build_session(ctx.proc.userdata["vad"])
 
     log_event(
@@ -214,6 +243,13 @@ async def receptionist(ctx: JobContext) -> None:
         config_source=config_source,
         doctors=len(clinic_config.doctors),
         timings=len(clinic_config.timings),
+        agent_api_url=api_url,
+        tools=[
+            "check_availability",
+            "book_appointment",
+            "reschedule_appointment",
+            "cancel_appointment",
+        ],
         stt_model=os.getenv("SARVAM_STT_MODEL", "saaras:v4"),
         llm_model=os.getenv("LLM_MODEL", "gpt-4.1-mini"),
         tts_model=os.getenv("SARVAM_TTS_MODEL", "bulbul:v3"),
@@ -221,7 +257,7 @@ async def receptionist(ctx: JobContext) -> None:
     )
 
     await session.start(
-        agent=Agent(instructions=build_system_prompt(clinic_config)),
+        agent=ReceptionistAgent(clinic_config=clinic_config, api=api),
         room=ctx.room,
     )
 

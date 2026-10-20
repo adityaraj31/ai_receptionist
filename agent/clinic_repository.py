@@ -127,6 +127,24 @@ def _format_windows(rules: Sequence[Mapping[str, Any]]) -> str:
     return ", ".join(windows)
 
 
+def _coerce_time(value: Any) -> time | None:
+    if isinstance(value, time):
+        return value
+    if isinstance(value, str):
+        try:
+            return time.fromisoformat(value)
+        except ValueError:
+            return None
+    return None
+
+
+def _format_fee(value: Any) -> str:
+    if value is None:
+        return ""
+    text = str(value).strip()
+    return text
+
+
 def _format_days(weekdays: set[int]) -> str:
     return ", ".join(DAY_ABBREVIATIONS[weekday] for weekday in sorted(weekdays))
 
@@ -162,6 +180,8 @@ def build_config_from_rows(
                 specialty=str(row.get("specialization") or ""),
                 days=_format_days(weekdays),
                 hours=_format_windows(doctor_rules),
+                id=str(row["id"]),
+                fee=_format_fee(row.get("fee")),
             )
         )
 
@@ -179,4 +199,45 @@ def build_config_from_rows(
         phone=str(clinic.get("phone") or ""),
         fees=str(clinic.get("fees") or ""),
         emergency_number=str(clinic.get("emergency_number") or "108"),
+    )
+
+
+def build_config_from_api_payload(
+    payload: Mapping[str, Any],
+    fallback: ClinicConfig,
+) -> ClinicConfig:
+    """Convert the ``GET /api/v1/agent/clinic-config`` payload into a ClinicConfig.
+
+    Non-clinic fields that the API does not store (fees, emergency number) come from
+    the environment fallback.
+    """
+    clinic = payload.get("clinic") or {}
+    doctors = payload.get("doctors") or []
+    availability = payload.get("availability") or []
+
+    rules: list[dict[str, Any]] = []
+    for row in availability:
+        start_time = _coerce_time(row.get("start_time"))
+        end_time = _coerce_time(row.get("end_time"))
+        if start_time is None or end_time is None:
+            continue
+        rules.append(
+            {
+                "doctor_id": row["doctor_id"],
+                "weekday": int(row["weekday"]),
+                "start_time": start_time,
+                "end_time": end_time,
+            }
+        )
+
+    config = build_config_from_rows(clinic, list(doctors), rules)
+    return ClinicConfig(
+        name=config.name,
+        doctors=config.doctors,
+        timings=config.timings,
+        timezone=config.timezone,
+        address=config.address or fallback.address,
+        phone=config.phone or fallback.phone,
+        fees=fallback.fees,
+        emergency_number=fallback.emergency_number,
     )

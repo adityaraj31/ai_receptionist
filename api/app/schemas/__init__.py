@@ -1,3 +1,9 @@
+from .agent import (
+    AgentAvailabilityRead,
+    AgentClinicConfigRead,
+    AgentClinicRead,
+    AgentDoctorRead,
+)
 from .appointment import (
     AppointmentCreate,
     AppointmentRead,
@@ -25,6 +31,10 @@ from .staff import (
 from .time_off import TimeOffCreate, TimeOffRead, TimeOffUpdate
 
 __all__ = [
+    "AgentAvailabilityRead",
+    "AgentClinicConfigRead",
+    "AgentClinicRead",
+    "AgentDoctorRead",
     "AppointmentCreate",
     "AppointmentRead",
     "AppointmentReschedule",

@@ -5,6 +5,7 @@ description = "LiveKit Agents voice worker for the AI Receptionist"
 requires-python = ">=3.11"
 dependencies = [
     "asyncpg>=0.30",
+    "httpx>=0.27",
     "livekit-agents[sarvam,silero,openai]~=1.8",
     "python-dotenv>=1.0",
 ]
