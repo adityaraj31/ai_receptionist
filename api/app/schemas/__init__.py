@@ -21,6 +21,13 @@ from .clinic import ClinicRead, ClinicUpdate
 from .common import Message, ORMModel
 from .doctor import DoctorCreate, DoctorRead, DoctorUpdate
 from .faq import FaqCreate, FaqRead, FaqSearchRead, FaqSearchRequest, FaqUpdate
+from .messaging import (
+    ConfirmationRead,
+    ConfirmationRequest,
+    MessageLogRead,
+    MessagingSettingsRead,
+    MessagingSettingsUpdate,
+)
 from .slot import FreeSlotRead
 from .staff import (
     InvitationAccept,
@@ -49,6 +56,8 @@ __all__ = [
     "CallbackUpdate",
     "ClinicRead",
     "ClinicUpdate",
+    "ConfirmationRead",
+    "ConfirmationRequest",
     "DoctorCreate",
     "DoctorRead",
     "DoctorUpdate",
@@ -62,6 +71,9 @@ __all__ = [
     "InvitationPreview",
     "LoginRequest",
     "Message",
+    "MessageLogRead",
+    "MessagingSettingsRead",
+    "MessagingSettingsUpdate",
     "ORMModel",
     "PatientRead",
     "StaffInvitationCreate",

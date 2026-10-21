@@ -6,6 +6,7 @@ Architecture notes and runbooks for the AI Receptionist live here.
 - [../README.md](../README.md) - local setup.
 - [telephony.md](telephony.md) - connect an Exotel/Plivo number to LiveKit SIP.
 - [faq.md](faq.md) - FAQ knowledge base, local embeddings, ingestion, and retrieval eval.
+- [messaging.md](messaging.md) - confirmations, reminders, providers, and templates.
 
 Planned notes:
 

@@ -156,6 +156,7 @@ def test_book_appointment_matches_slot_and_posts_payload() -> None:
         phone="+919999999999",
         doctor="Dr. Asha Rao",
         datetime="2026-10-22T10:00",
+        language="hi",
     )
 
     assert result == {
@@ -171,6 +172,7 @@ def test_book_appointment_matches_slot_and_posts_payload() -> None:
         "ends_at": SLOT_END,
         "patient_name": "Ravi Kumar",
         "patient_phone": "+919999999999",
+        "language": "hi",
     }
 
 
@@ -440,3 +442,57 @@ def test_create_callback_failure_does_not_confirm() -> None:
     assert result["ok"] is False
     assert result["reason"] == "unavailable"
     assert "couldn't save" in result["say"]
+
+
+def test_send_confirmation_sends_requested_channel() -> None:
+    captured: dict[str, Any] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.method == "POST"
+        assert request.url.path == f"/api/v1/agent/appointments/{APPOINTMENT_ID}/confirmation"
+        captured.update(json.loads(request.content))
+        return httpx.Response(
+            200,
+            json={
+                "ok": True,
+                "sent": True,
+                "channel": "whatsapp",
+                "appointment_id": APPOINTMENT_ID,
+                "reason": None,
+            },
+        )
+
+    result = run_tool(
+        make_agent(handler),
+        "send_confirmation",
+        channel="WhatsApp",
+        appointment_id=APPOINTMENT_ID,
+    )
+
+    assert result == {"ok": True, "sent": True, "channel": "whatsapp"}
+    assert captured == {"channel": "whatsapp"}
+
+
+def test_send_confirmation_reports_disabled_channel() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "ok": False,
+                "sent": False,
+                "channel": "sms",
+                "appointment_id": APPOINTMENT_ID,
+                "reason": "confirmation_channel_disabled",
+            },
+        )
+
+    result = run_tool(
+        make_agent(handler),
+        "send_confirmation",
+        channel="sms",
+        appointment_id=APPOINTMENT_ID,
+    )
+
+    assert result["ok"] is False
+    assert result["reason"] == "confirmation_channel_disabled"
+    assert "still booked" in result["say"]

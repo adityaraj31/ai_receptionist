@@ -77,6 +77,26 @@ export function SettingsIcon({ className }: IconProps) {
   );
 }
 
+export function MessageIcon({ className }: IconProps) {
+  return (
+    <svg
+      className={base(className)}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      aria-hidden="true"
+    >
+      <path
+        d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9.7 9.7 0 0 1-4.3-1L3 20l1.1-4.2A8.4 8.4 0 1 1 21 11.5z"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M8 11h8M8 14.5h5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function MenuIcon({ className }: IconProps) {
   return (
     <svg

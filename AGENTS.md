@@ -29,7 +29,7 @@ runbook are in `/infra/livekit-sip` and `docs/telephony.md`. Use the region-pinn
 - FAQ embeddings: `fastembed` local ONNX model (`EMBEDDING_MODEL`, 384d) + pgvector HNSW;
   chosen over a hosted embeddings API to keep retrieval under 300 ms and FAQ text in-region.
 - Auth: staff email/password -> JWT; voice agent -> `X-Service-Key`
-- Queue: Redis + Arq (post-call jobs)
+- Queue: Redis + Arq (post-call jobs and 24h/2h appointment reminders)
 - Storage: S3-compatible (recordings), use Cloudflare R2 or S3 Mumbai
 - Messaging: WhatsApp Business API (Meta Cloud API or Gupshup), SMS via Exotel/Plivo
 - Dashboard: Next.js + Tailwind + Recharts
@@ -83,7 +83,7 @@ Caller -> PSTN -> Exotel/Plivo -> SIP trunk -> LiveKit SIP -> LiveKit Room
 - `search_faq(query)` (RAG over clinic timings, fees, doctors, location, services, policies)
 - `transfer_to_human(reason)` (warm SIP dial to the clinic front desk; fallback `create_callback`)
 - `create_callback(name, phone, reason, message)` (callback task when transfer fails)
-- `send_confirmation(channel, appointment_id)` (WhatsApp or SMS)
+- `send_confirmation(channel, appointment_id)` (WhatsApp or SMS via clinic settings)
 - `save_lead(name, phone, notes)` (CRM or Sheets)
 
 Tool outputs must be short and structured so the LLM can answer in one sentence.
@@ -104,6 +104,8 @@ billing/insurance questions, repeated frustration, and two failed attempts to un
 Warm transfer needs a LiveKit **outbound** SIP trunk (`LIVEKIT_SIP_OUTBOUND_TRUNK`); see
 `docs/telephony.md`.
 
+Confirmations use `send_confirmation(channel, appointment_id)` -> `POST /api/v1/agent/appointments/{id}/confirmation`. Provider adapters live in `api/app/messaging` (Meta Cloud API/Gupshup for WhatsApp, Exotel/Plivo for SMS) behind one `MessagingService`. Per-clinic switches and Hindi/English templates live in `clinic_messaging_settings` and are edited on the dashboard **Messaging** page; attempts are recorded in `message_logs`. Booking/rescheduling enqueues Arq `send_appointment_reminder` jobs at 24h and 2h before the visit. Run the worker with `cd api && uv run arq app.workers.main.WorkerSettings`. For local end-to-end testing without provider credentials, set `WHATSAPP_PROVIDER=fake` and `SMS_PROVIDER=fake`; messages are logged instead of sent. See `docs/messaging.md`.
+
 Calendar tools are implemented in `/agent` (`agent_tools.py` + `api_client.py`). They call
 `/api` with the `X-Service-Key` header (`AGENT_API_URL` / `AGENT_API_KEY`, falling back to
 `DEMO_AGENT_KEY`) and never write appointments directly to Postgres. At call start the agent
@@ -113,7 +115,7 @@ short `say` line so the call never goes silent.
 
 ## Data model (core tables)
 
-`clinics` (with `front_desk_number`), `staff_users`, `staff_invitations`, `agent_api_keys`, `doctors`, `availability_rules`, `time_off`, `patients`, `appointments` (clinic-scoped, with overlap exclusion), `faq_chunks` (clinic-scoped, vector(384), HNSW cosine index), `callback_tasks` (clinic-scoped follow-ups), `calls` (id, from_number, duration, language, recording_url, cost, status), `transcripts`, `call_events`, `evaluations`.
+`clinics` (with `front_desk_number`), `clinic_messaging_settings` (channels, reminder switches, Hindi/English templates), `message_logs`, `staff_users`, `staff_invitations`, `agent_api_keys`, `doctors`, `availability_rules`, `time_off`, `patients`, `appointments` (clinic-scoped, with overlap exclusion and language), `faq_chunks` (clinic-scoped, vector(384), HNSW cosine index), `callback_tasks` (clinic-scoped follow-ups), `calls` (id, from_number, duration, language, recording_url, cost, status), `transcripts`, `call_events`, `evaluations`.
 
 Free slots = weekly availability minus time off minus non-cancelled appointments. Appointments must align to generated slots; a GiST exclusion constraint blocks overlapping bookings even under concurrent requests.
 
@@ -135,6 +137,6 @@ Free slots = weekly availability minus time off minus non-cancelled appointments
 ## Milestones
 
 - Week 1: Phone -> STT -> LLM -> TTS working, calendar booking, Hindi + English.
-- Week 2: FAQ RAG (done: local embeddings, pgvector, staff UI, eval), human transfer
-  (done: warm SIP transfer + callback fallback), WhatsApp/SMS confirmations, reminders, CRM sync.
+- Week 2: FAQ RAG (done), human transfer (done), WhatsApp/SMS confirmations and
+  24h/2h reminders (done: provider adapters, clinic templates, Arq jobs), CRM sync.
 - Week 3: Recording, transcripts, evals, analytics dashboard, concurrency tests, demo and pricing.

@@ -11,6 +11,7 @@ import {
   FaqIcon,
   LogoutIcon,
   MenuIcon,
+  MessageIcon,
   PhoneIcon,
   SettingsIcon,
   StethoscopeIcon,
@@ -32,6 +33,7 @@ const navigation: {
   { href: "/doctors", label: "Doctors", icon: StethoscopeIcon },
   { href: "/availability", label: "Availability", icon: ClockIcon },
   { href: "/faqs", label: "FAQs", icon: FaqIcon },
+  { href: "/messaging", label: "Messaging", icon: MessageIcon },
   { href: "/staff", label: "Staff access", icon: UsersIcon, adminOnly: true },
   { href: "/setup", label: "Clinic setup", icon: SettingsIcon },
 ];

@@ -343,11 +343,11 @@ questions, repeated frustration, and after two failed attempts to understand. Th
 > front desk leg must go through Exotel/Plivo. Cold transfer via SIP REFER is not used
 > because it cannot fall back when the destination does not answer.
 
-## Outbound calls (later, for reminders)
+## Outbound calls (not implemented)
 
-Reminders are a Week 2+ item. When added, they will originate from the worker with
-`CreateSIPParticipant` (or `lk sip participant create`) using the outbound trunk from
-Step 6:
+Appointment reminders use WhatsApp/SMS, not outbound voice calls; see
+[`messaging.md`](messaging.md). If outbound calling is added later, it can reuse the
+outbound trunk from Step 6:
 
 - Exotel edge (digest): `in.voip.exotel.com:5070` TCP or `:443` TLS, with the trunk
   credentials created in Step 3a.

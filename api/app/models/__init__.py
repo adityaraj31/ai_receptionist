@@ -6,6 +6,7 @@ from .callback import CallbackTask
 from .clinic import Clinic
 from .doctor import Doctor
 from .faq import EMBEDDING_DIMENSIONS, FaqChunk
+from .messaging import ClinicMessagingSettings, MessageLog
 from .patient import Patient
 from .staff import AgentApiKey, StaffInvitation, StaffUser
 
@@ -17,11 +18,13 @@ __all__ = [
     "Call",
     "CallbackTask",
     "CallEvent",
+    "ClinicMessagingSettings",
     "Clinic",
     "Doctor",
     "EMBEDDING_DIMENSIONS",
     "Evaluation",
     "FaqChunk",
+    "MessageLog",
     "Patient",
     "StaffInvitation",
     "StaffUser",

@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from .call import Call
     from .callback import CallbackTask
     from .doctor import Doctor
+    from .messaging import ClinicMessagingSettings
     from .patient import Patient
     from .staff import AgentApiKey, StaffUser
 
@@ -36,3 +37,6 @@ class Clinic(Base, TimestampMixin):
     agent_api_keys: Mapped[list[AgentApiKey]] = relationship(back_populates="clinic")
     calls: Mapped[list[Call]] = relationship(back_populates="clinic")
     callback_tasks: Mapped[list[CallbackTask]] = relationship(back_populates="clinic")
+    messaging_settings: Mapped[ClinicMessagingSettings | None] = relationship(
+        back_populates="clinic", uselist=False
+    )

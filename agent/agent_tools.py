@@ -155,6 +155,43 @@ class ReceptionistAgent(Agent):
         }
 
     @llm.function_tool
+    async def send_confirmation(self, channel: str, appointment_id: str) -> dict[str, Any]:
+        """Send an appointment confirmation on WhatsApp or SMS.
+
+        Call this only after a successful booking and only if the caller wants a
+        confirmation. Use the appointment_id returned by book_appointment.
+
+        Args:
+            channel: "whatsapp" or "sms", whichever the caller prefers.
+            appointment_id: Appointment reference from book_appointment.
+        """
+        normalized = channel.strip().lower()
+        if normalized not in {"whatsapp", "sms"}:
+            return _failure(
+                "invalid_channel",
+                "Would you like the confirmation on WhatsApp or by SMS?",
+            )
+        try:
+            result = await self._api.send_confirmation(appointment_id, normalized)
+        except AgentApiRejected:
+            return _failure(
+                "rejected",
+                "I couldn't send the confirmation. The clinic team can help you.",
+            )
+        except AgentApiError:
+            return _failure(
+                "unavailable",
+                "I couldn't send the confirmation right now. The appointment is still booked.",
+            )
+
+        if not result.get("sent"):
+            return _failure(
+                str(result.get("reason") or "not_sent"),
+                "I couldn't send the confirmation right now. The appointment is still booked.",
+            )
+        return {"ok": True, "sent": True, "channel": normalized}
+
+    @llm.function_tool
     async def check_availability(self, date: str, doctor: str = "") -> dict[str, Any]:
         """Find free appointment slots for a doctor on a date.
 
@@ -200,6 +237,7 @@ class ReceptionistAgent(Agent):
         phone: str,
         doctor: str,
         datetime: str,
+        language: str = "",
     ) -> dict[str, Any]:
         """Book an appointment after the caller confirms the details.
 
@@ -208,6 +246,7 @@ class ReceptionistAgent(Agent):
             phone: Callback phone number.
             doctor: Doctor name.
             datetime: Local start time in YYYY-MM-DDTHH:MM format.
+            language: Caller language, either "hi" or "en". Leave empty if unsure.
         """
         try:
             start = self._parse_local_datetime(datetime)
@@ -245,6 +284,8 @@ class ReceptionistAgent(Agent):
             "patient_name": patient_name.strip(),
             "patient_phone": phone.strip(),
         }
+        if language.strip().lower() in {"en", "hi"}:
+            payload["language"] = language.strip().lower()
         try:
             appointment = await self._api.book_appointment(payload)
         except AgentApiRejected as exc:

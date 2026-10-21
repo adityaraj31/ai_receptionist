@@ -76,7 +76,8 @@ admin dashboard in [`/dashboard`](dashboard).
    The agent loads clinic config from Postgres and falls back to
    `CLINIC_*` env values only when the database is unavailable or has no active clinic.
    See [api/README.md](api/README.md), [infra/README.md](infra/README.md), and
-   [agent/README.md](agent/README.md).
+   [agent/README.md](agent/README.md). For reminders, run the Arq worker in a second
+   terminal: `cd api && uv run arq app.workers.main.WorkerSettings`.
 
 4. **Check health and logs**
 
@@ -149,7 +150,8 @@ to `.env.local` to override it. The API must allow the dashboard origin via
 The dashboard includes login, a first-run setup wizard, doctor management, weekly
 availability and time off, a daily appointment list with booking, rescheduling,
 cancellation, and free-slot views, an FAQ knowledge base with add/edit/deactivate and
-JSON/CSV upload, a Callbacks queue for failed human transfers, plus admin-only staff
+JSON/CSV upload, a Callbacks queue for failed human transfers, a Messaging page for
+confirmation/reminder switches and Hindi/English templates, plus admin-only staff
 management. Admins can invite
 receptionists or other admins, promote or demote staff, and deactivate access. An invite
 is a one-time link valid for 7 days; the recipient sets a password and is signed in
@@ -182,5 +184,5 @@ for required keys, browser testing, and latency log fields.
 ## Next steps
 
 1. Call ingestion, transcripts, evals, and dashboard analytics.
-2. WhatsApp/SMS confirmations and post-call jobs.
+2. Post-call jobs and CRM sync.
 3. Recordings, transcripts, summaries, and cost tracking after each call.

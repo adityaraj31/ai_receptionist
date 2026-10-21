@@ -15,12 +15,14 @@ from .api.routers import (
     faqs,
     health,
     invitations,
+    messaging,
     slots,
     staff,
     time_off,
 )
 from .config import settings
 from .db import engine
+from .queue import close_queue, init_queue
 from .services import embeddings
 
 TAGS_METADATA = [
@@ -60,6 +62,10 @@ TAGS_METADATA = [
         "name": "Callbacks",
         "description": "Callback tasks created when a caller cannot be transferred.",
     },
+    {
+        "name": "Messaging",
+        "description": "Clinic confirmation and reminder settings, templates, and providers.",
+    },
 ]
 
 
@@ -68,9 +74,11 @@ async def lifespan(_: FastAPI):
     if not settings.secret_key:
         raise RuntimeError("SECRET_KEY must be set before starting the API")
     warm_task = asyncio.create_task(embeddings.awarm()) if settings.embedding_warmup else None
+    await init_queue()
     yield
     if warm_task is not None and not warm_task.done():
         warm_task.cancel()
+    await close_queue()
     await engine.dispose()
 
 
@@ -107,3 +115,4 @@ app.include_router(slots.router, prefix="/api/v1")
 app.include_router(appointments.router, prefix="/api/v1")
 app.include_router(faqs.router, prefix="/api/v1")
 app.include_router(callbacks.router, prefix="/api/v1")
+app.include_router(messaging.router, prefix="/api/v1")

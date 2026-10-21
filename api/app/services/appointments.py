@@ -19,6 +19,7 @@ from .common import (
     get_doctor_or_404,
     get_patient_or_404,
 )
+from .reminders import schedule_appointment_reminders
 from .slots import get_free_slots
 
 
@@ -42,6 +43,7 @@ def appointment_to_read(
         ends_at=appointment.ends_at,
         status=appointment.status,
         source=appointment.source,
+        language=appointment.language,
         notes=appointment.notes,
         fee=doctor.fee,
     )
@@ -160,6 +162,7 @@ async def create_appointment(
         ends_at=payload.ends_at,
         status="booked",
         source=principal.kind,
+        language=payload.language or "en",
         notes=payload.notes,
         created_by_staff_id=principal.staff_id,
     )
@@ -174,6 +177,7 @@ async def create_appointment(
             detail="This slot was just booked. Choose another slot.",
         ) from exc
 
+    await schedule_appointment_reminders(appointment.id, appointment.starts_at)
     return appointment_to_read(appointment, doctor, patient)
 
 
@@ -213,6 +217,7 @@ async def reschedule_appointment(
             detail="This slot was just booked. Choose another slot.",
         ) from exc
 
+    await schedule_appointment_reminders(appointment.id, appointment.starts_at)
     return appointment_to_read(appointment, doctor)
 
 

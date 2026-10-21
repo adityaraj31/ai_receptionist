@@ -115,6 +115,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/agent/appointments/{appointment_id}/confirmation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send an appointment confirmation
+         * @description Service-key endpoint used by the voice agent after booking. Sends WhatsApp or SMS using the clinic's enabled settings and language template.
+         */
+        post: operations["send_appointment_confirmation_api_v1_agent_appointments__appointment_id__confirmation_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/invitations/{token}": {
         parameters: {
             query?: never;
@@ -501,6 +521,24 @@ export interface paths {
         patch: operations["update_callback_api_v1_callbacks__callback_id__patch"];
         trace?: never;
     };
+    "/api/v1/messaging-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get clinic messaging settings and templates */
+        get: operations["get_settings_api_v1_messaging_settings_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update clinic messaging settings and templates */
+        patch: operations["update_settings_api_v1_messaging_settings_patch"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -601,6 +639,8 @@ export interface components {
              * @default
              */
             notes: string;
+            /** Language */
+            language?: string | null;
         };
         /** AppointmentRead */
         AppointmentRead: {
@@ -646,6 +686,8 @@ export interface components {
             status: string;
             /** Source */
             source: string;
+            /** Language */
+            language: string;
             /** Notes */
             notes: string;
             /** Fee */
@@ -825,6 +867,33 @@ export interface components {
             front_desk_number?: string | null;
             /** Email */
             email?: string | null;
+        };
+        /** ConfirmationRead */
+        ConfirmationRead: {
+            /** Ok */
+            ok: boolean;
+            /** Sent */
+            sent: boolean;
+            /**
+             * Channel
+             * @enum {string}
+             */
+            channel: "whatsapp" | "sms";
+            /**
+             * Appointment Id
+             * Format: uuid
+             */
+            appointment_id: string;
+            /** Reason */
+            reason?: string | null;
+        };
+        /** ConfirmationRequest */
+        ConfirmationRequest: {
+            /**
+             * Channel
+             * @enum {string}
+             */
+            channel: "whatsapp" | "sms";
         };
         /** DoctorCreate */
         DoctorCreate: {
@@ -1018,6 +1087,75 @@ export interface components {
             email: string;
             /** Password */
             password: string;
+        };
+        /** MessagingSettingsRead */
+        MessagingSettingsRead: {
+            /**
+             * Clinic Id
+             * Format: uuid
+             */
+            clinic_id: string;
+            /** Confirmation Whatsapp Enabled */
+            confirmation_whatsapp_enabled: boolean;
+            /** Confirmation Sms Enabled */
+            confirmation_sms_enabled: boolean;
+            /** Reminders Enabled */
+            reminders_enabled: boolean;
+            /** Reminder 24H Enabled */
+            reminder_24h_enabled: boolean;
+            /** Reminder 2H Enabled */
+            reminder_2h_enabled: boolean;
+            /**
+             * Reminder Channel
+             * @enum {string}
+             */
+            reminder_channel: "whatsapp" | "sms";
+            /**
+             * Default Language
+             * @enum {string}
+             */
+            default_language: "en" | "hi";
+            /** Confirmation Template En */
+            confirmation_template_en: string;
+            /** Confirmation Template Hi */
+            confirmation_template_hi: string;
+            /** Reminder 24H Template En */
+            reminder_24h_template_en: string;
+            /** Reminder 24H Template Hi */
+            reminder_24h_template_hi: string;
+            /** Reminder 2H Template En */
+            reminder_2h_template_en: string;
+            /** Reminder 2H Template Hi */
+            reminder_2h_template_hi: string;
+        };
+        /** MessagingSettingsUpdate */
+        MessagingSettingsUpdate: {
+            /** Confirmation Whatsapp Enabled */
+            confirmation_whatsapp_enabled?: boolean | null;
+            /** Confirmation Sms Enabled */
+            confirmation_sms_enabled?: boolean | null;
+            /** Reminders Enabled */
+            reminders_enabled?: boolean | null;
+            /** Reminder 24H Enabled */
+            reminder_24h_enabled?: boolean | null;
+            /** Reminder 2H Enabled */
+            reminder_2h_enabled?: boolean | null;
+            /** Reminder Channel */
+            reminder_channel?: ("whatsapp" | "sms") | null;
+            /** Default Language */
+            default_language?: ("en" | "hi") | null;
+            /** Confirmation Template En */
+            confirmation_template_en?: string | null;
+            /** Confirmation Template Hi */
+            confirmation_template_hi?: string | null;
+            /** Reminder 24H Template En */
+            reminder_24h_template_en?: string | null;
+            /** Reminder 24H Template Hi */
+            reminder_24h_template_hi?: string | null;
+            /** Reminder 2H Template En */
+            reminder_2h_template_en?: string | null;
+            /** Reminder 2H Template Hi */
+            reminder_2h_template_hi?: string | null;
         };
         /** StaffInvitationCreate */
         StaffInvitationCreate: {
@@ -1374,6 +1512,48 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["CallbackRead"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    send_appointment_confirmation_api_v1_agent_appointments__appointment_id__confirmation_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                appointment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfirmationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfirmationRead"];
+                };
+            };
+            /** @description Appointment not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -2674,6 +2854,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CallbackRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_settings_api_v1_messaging_settings_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessagingSettingsRead"];
+                };
+            };
+        };
+    };
+    update_settings_api_v1_messaging_settings_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MessagingSettingsUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessagingSettingsRead"];
                 };
             };
             /** @description Validation Error */

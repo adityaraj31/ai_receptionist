@@ -16,6 +16,7 @@ class AppointmentCreate(BaseModel):
     patient_phone: str | None = Field(default=None, min_length=5, max_length=30)
     patient_email: EmailStr | None = None
     notes: str = Field(default="", max_length=1000)
+    language: str | None = Field(default=None, pattern="^(en|hi)$")
 
     @field_validator("starts_at", "ends_at")
     @classmethod
@@ -66,6 +67,7 @@ class AppointmentRead(BaseModel):
     ends_at: datetime
     status: str
     source: str
+    language: str
     notes: str
     fee: Decimal
 

@@ -94,12 +94,13 @@ service key, so the agent never writes to Postgres directly.
 | Tool | API call / action |
 | --- | --- |
 | `check_availability(date, doctor)` | `GET /api/v1/doctors/{id}/free-slots?date=` |
-| `book_appointment(patient_name, phone, doctor, datetime)` | `POST /api/v1/appointments` |
+| `book_appointment(patient_name, phone, doctor, datetime, language)` | `POST /api/v1/appointments` |
 | `reschedule_appointment(appointment_id, datetime)` | `PATCH /api/v1/appointments/{id}/reschedule` |
 | `cancel_appointment(appointment_id)` | `POST /api/v1/appointments/{id}/cancel` |
 | `search_faq(question)` | `POST /api/v1/agent/faq/search` |
 | `transfer_to_human(reason)` | dials `front_desk_number` into the room via SIP |
 | `create_callback(name, phone, reason, message)` | `POST /api/v1/agent/callbacks` |
+| `send_confirmation(channel, appointment_id)` | `POST /api/v1/agent/appointments/{id}/confirmation` |
 
 `date` is `YYYY-MM-DD`; `datetime` is clinic-local `YYYY-MM-DDTHH:MM`. The tools match the
 requested time against the computed free slots and let the database exclusion constraint
@@ -220,5 +221,5 @@ uv run pytest
 - Sarvam's current docs recommend `STTRealtime` with server-side turn detection for new
   builds. This slice intentionally uses the legacy streaming `STT` with Silero VAD because
   the requested pipeline requires Silero VAD; revisit this before production.
-- Calendar, FAQ, human transfer, and callback tools are wired. WhatsApp/SMS
-  confirmations, reminders, and CRM sync are not yet.
+- Calendar, FAQ, human transfer, callback, and confirmation tools are wired. Arq sends
+  24h/2h reminders from the API; CRM sync is not yet.

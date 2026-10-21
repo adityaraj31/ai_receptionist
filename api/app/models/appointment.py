@@ -58,6 +58,7 @@ class Appointment(Base, TimestampMixin):
     ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     status: Mapped[str] = mapped_column(Text, nullable=False, default="booked")
     source: Mapped[str] = mapped_column(Text, nullable=False, default="staff")
+    language: Mapped[str] = mapped_column(Text, nullable=False, default="en")
     notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
     created_by_staff_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("staff_users.id", ondelete="SET NULL")

@@ -161,6 +161,9 @@ just the JWT claims.
 | `GET` | `/api/v1/callbacks?status=pending` | staff | List callback tasks |
 | `PATCH` | `/api/v1/callbacks/{id}` | staff | Mark a callback contacted/done/cancelled |
 | `POST` | `/api/v1/agent/callbacks` | agent | Create a callback after a failed transfer |
+| `GET` | `/api/v1/messaging-settings` | staff | Get confirmation/reminder switches and templates |
+| `PATCH` | `/api/v1/messaging-settings` | staff | Update switches and templates |
+| `POST` | `/api/v1/agent/appointments/{id}/confirmation` | agent | Send WhatsApp or SMS confirmation |
 
 ## FAQ retrieval
 
@@ -180,6 +183,15 @@ the live call with a LiveKit outbound trunk (`LIVEKIT_SIP_OUTBOUND_TRUNK`) and w
 `TRANSFER_RING_TIMEOUT_SECONDS`. If nobody answers, the agent takes a message and posts it
 to `/api/v1/agent/callbacks`; staff see it on the dashboard Callbacks page. See
 [../docs/telephony.md](../docs/telephony.md).
+
+## Confirmations and reminders
+
+`MessagingService` has WhatsApp adapters (Meta Cloud API, Gupshup) and SMS adapters
+(Exotel, Plivo), selected by `WHATSAPP_PROVIDER` and `SMS_PROVIDER`. Clinic switches and
+Hindi/English templates live in `clinic_messaging_settings`; sent and skipped attempts go
+to `message_logs`. Booking and rescheduling enqueue `send_appointment_reminder` jobs at
+24 hours and 2 hours before the visit. Run the worker with
+`uv run arq app.workers.main.WorkerSettings`; see [../docs/messaging.md](../docs/messaging.md).
 
 ## Slot rules
 

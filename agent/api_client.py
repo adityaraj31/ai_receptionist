@@ -128,6 +128,17 @@ class AgentApiClient:
             json=payload,
         )
 
+    async def send_confirmation(
+        self,
+        appointment_id: str,
+        channel: str,
+    ) -> dict[str, Any]:
+        return await self._request(
+            "POST",
+            f"/api/v1/agent/appointments/{appointment_id}/confirmation",
+            json={"channel": channel},
+        )
+
 
 def _error_detail(response: httpx.Response) -> tuple[str, Any]:
     try:

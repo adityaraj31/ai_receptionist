@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from time import perf_counter
+from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
@@ -15,12 +16,15 @@ from ...schemas import (
     AgentDoctorRead,
     CallbackCreate,
     CallbackRead,
+    ConfirmationRead,
+    ConfirmationRequest,
     FaqSearchRead,
     FaqSearchRequest,
 )
 from ...services.callbacks import create_callback_task
 from ...services.common import get_clinic_or_404
 from ...services.faq import find_faq_answer, shorten_answer
+from ...services.messaging import send_confirmation
 from ..deps import CurrentService
 
 logger = logging.getLogger(__name__)
@@ -172,3 +176,35 @@ async def create_callback(
 ) -> CallbackRead:
     task = await create_callback_task(session, principal.clinic_id, payload)
     return CallbackRead.model_validate(task)
+
+
+@router.post(
+    "/appointments/{appointment_id}/confirmation",
+    response_model=ConfirmationRead,
+    summary="Send an appointment confirmation",
+    description=(
+        "Service-key endpoint used by the voice agent after booking. Sends WhatsApp or "
+        "SMS using the clinic's enabled settings and language template."
+    ),
+    responses={404: {"description": "Appointment not found"}},
+)
+async def send_appointment_confirmation(
+    appointment_id: UUID,
+    payload: ConfirmationRequest,
+    principal: CurrentService,
+    session: SessionDep,
+) -> ConfirmationRead:
+    log = await send_confirmation(
+        session,
+        principal.clinic_id,
+        appointment_id,
+        payload.channel,
+    )
+    sent = log.status == "sent"
+    return ConfirmationRead(
+        ok=sent,
+        sent=sent,
+        channel=payload.channel,
+        appointment_id=appointment_id,
+        reason=None if sent else (log.error or log.status),
+    )

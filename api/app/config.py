@@ -24,6 +24,30 @@ class Settings(BaseSettings):
     faq_high_confidence_similarity: float = 0.55
     faq_answer_max_chars: int = 320
 
+    redis_url: str = "redis://localhost:6379/0"
+    arq_queue_name: str = "post_call"
+    reminder_jobs_enabled: bool = True
+    messaging_timeout_seconds: float = 10.0
+
+    whatsapp_provider: str = "none"
+    whatsapp_api_url: str = "https://graph.facebook.com/v21.0"
+    whatsapp_access_token: str = ""
+    whatsapp_phone_number_id: str = ""
+    gupshup_api_url: str = "https://api.gupshup.io/wa/api/v1"
+    gupshup_api_key: str = ""
+    gupshup_app_name: str = ""
+    gupshup_source_number: str = ""
+
+    sms_provider: str = "none"
+    exotel_subdomain: str = "api.exotel.com"
+    exotel_sid: str = ""
+    exotel_api_key: str = ""
+    exotel_api_token: str = ""
+    exotel_caller_id: str = ""
+    plivo_auth_id: str = ""
+    plivo_auth_token: str = ""
+    plivo_number: str = ""
+
     model_config = SettingsConfigDict(
         env_file=(ROOT_DIR / ".env", ROOT_DIR / "api" / ".env"),
         env_file_encoding="utf-8",

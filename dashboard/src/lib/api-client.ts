@@ -23,6 +23,8 @@ import {
   type InvitationPreview,
   type LoginInput,
   type LoginResponse,
+  type MessagingSettings,
+  type MessagingSettingsInput,
   type Staff,
   type StaffInvitation,
   type StaffInvitationCreate,
@@ -138,6 +140,14 @@ export const api = {
 
   updateClinic: (body: ClinicInput) =>
     unwrap<Clinic>(client.PATCH("/api/v1/clinic", { body })),
+
+  getMessagingSettings: () =>
+    unwrap<MessagingSettings>(client.GET("/api/v1/messaging-settings")),
+
+  updateMessagingSettings: (body: MessagingSettingsInput) =>
+    unwrap<MessagingSettings>(
+      client.PATCH("/api/v1/messaging-settings", { body }),
+    ),
 
   listCallbacks: (status?: CallbackStatus) =>
     unwrap<Callback[]>(
