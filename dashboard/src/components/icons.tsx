@@ -247,3 +247,59 @@ export function CheckIcon({ className }: IconProps) {
     </svg>
   );
 }
+
+export function PhoneIcon({ className }: IconProps) {
+  return (
+    <svg
+      className={base(className)}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      aria-hidden="true"
+    >
+      <path
+        d="M6.6 3.5h2.2l1.1 3.3-1.5 1.3a13 13 0 0 0 6.5 6.5l1.3-1.5 3.3 1.1v2.2a2.6 2.6 0 0 1-2.8 2.6A16.6 16.6 0 0 1 4 6.3a2.6 2.6 0 0 1 2.6-2.8Z"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+export function FaqIcon({ className }: IconProps) {
+  return (
+    <svg
+      className={base(className)}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      aria-hidden="true"
+    >
+      <path
+        d="M21 11.5a8.4 8.4 0 0 1-8.5 8.3 9.2 9.2 0 0 1-3.2-.6L4 21l1.7-4.2A8.1 8.1 0 0 1 4 11.5 8.4 8.4 0 0 1 12.5 3 8.4 8.4 0 0 1 21 11.5Z"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M9.8 9.2a2.3 2.3 0 1 1 3.2 2.1c-.6.3-1 .9-1 1.6v.3" strokeLinecap="round" />
+      <path d="M12 16.4h.01" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function UploadIcon({ className }: IconProps) {
+  return (
+    <svg
+      className={base(className)}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      aria-hidden="true"
+    >
+      <path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" strokeLinecap="round" />
+    </svg>
+  );
+}

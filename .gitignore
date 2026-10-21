@@ -43,3 +43,6 @@ Thumbs.db
 .idea/
 .vscode/
 *.swp
+
+# Local embedding model cache
+.fastembed_cache/

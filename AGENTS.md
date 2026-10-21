@@ -26,6 +26,8 @@ runbook are in `/infra/livekit-sip` and `docs/telephony.md`. Use the region-pinn
 - LLM: fast tool-calling model, configurable via env (`LLM_MODEL`)
 - Backend: FastAPI + SQLAlchemy 2 (async) + Alembic
 - DB: PostgreSQL + pgvector (FAQ RAG); cloud via `DATABASE_URL` (Supabase/Neon)
+- FAQ embeddings: `fastembed` local ONNX model (`EMBEDDING_MODEL`, 384d) + pgvector HNSW;
+  chosen over a hosted embeddings API to keep retrieval under 300 ms and FAQ text in-region.
 - Auth: staff email/password -> JWT; voice agent -> `X-Service-Key`
 - Queue: Redis + Arq (post-call jobs)
 - Storage: S3-compatible (recordings), use Cloudflare R2 or S3 Mumbai
@@ -78,12 +80,29 @@ Caller -> PSTN -> Exotel/Plivo -> SIP trunk -> LiveKit SIP -> LiveKit Room
 - `check_availability(date, doctor)`
 - `book_appointment(patient_name, phone, doctor, datetime)`
 - `reschedule_appointment(appointment_id, datetime)` / `cancel_appointment(appointment_id)`
-- `search_faq(query)` (RAG over clinic timings, fees, doctors, location)
-- `transfer_to_human(reason)`
+- `search_faq(query)` (RAG over clinic timings, fees, doctors, location, services, policies)
+- `transfer_to_human(reason)` (warm SIP dial to the clinic front desk; fallback `create_callback`)
+- `create_callback(name, phone, reason, message)` (callback task when transfer fails)
 - `send_confirmation(channel, appointment_id)` (WhatsApp or SMS)
 - `save_lead(name, phone, notes)` (CRM or Sheets)
 
 Tool outputs must be short and structured so the LLM can answer in one sentence.
+`search_faq` calls `POST /api/v1/agent/faq/search` (service key), which embeds the query
+locally and returns the closest active FAQ trimmed to two sentences. If nothing clears the
+confidence threshold it returns `found=false`, and the agent offers a callback. Staff manage
+the knowledge base from the dashboard's FAQs page (add/edit/deactivate, JSON/CSV upload);
+`api/scripts/ingest_faqs.py` bulk-loads the seed corpus. Retrieval must stay under 300 ms
+p95 in the eval (`evals/run_faq_eval.py`); see `docs/faq.md`.
+
+`transfer_to_human` dials the clinic front desk into the caller's room with
+`CreateSIPParticipant(wait_until_answered=true)` (`agent/transfer.py`). The number comes from
+`clinics.front_desk_number` (dashboard **Clinic setup**), with `TRANSFER_NUMBER` as a local
+fallback. If the front desk does not answer within `TRANSFER_RING_TIMEOUT_SECONDS`, the agent
+takes a message and calls `create_callback`, which writes `callback_tasks` through
+`POST /api/v1/agent/callbacks`. Transfers trigger on emergencies, explicit human requests,
+billing/insurance questions, repeated frustration, and two failed attempts to understand.
+Warm transfer needs a LiveKit **outbound** SIP trunk (`LIVEKIT_SIP_OUTBOUND_TRUNK`); see
+`docs/telephony.md`.
 
 Calendar tools are implemented in `/agent` (`agent_tools.py` + `api_client.py`). They call
 `/api` with the `X-Service-Key` header (`AGENT_API_URL` / `AGENT_API_KEY`, falling back to
@@ -94,7 +113,7 @@ short `say` line so the call never goes silent.
 
 ## Data model (core tables)
 
-`clinics`, `staff_users`, `staff_invitations`, `agent_api_keys`, `doctors`, `availability_rules`, `time_off`, `patients`, `appointments` (clinic-scoped, with overlap exclusion), `calls` (id, from_number, duration, language, recording_url, cost, status), `transcripts`, `call_events`, `evaluations`.
+`clinics` (with `front_desk_number`), `staff_users`, `staff_invitations`, `agent_api_keys`, `doctors`, `availability_rules`, `time_off`, `patients`, `appointments` (clinic-scoped, with overlap exclusion), `faq_chunks` (clinic-scoped, vector(384), HNSW cosine index), `callback_tasks` (clinic-scoped follow-ups), `calls` (id, from_number, duration, language, recording_url, cost, status), `transcripts`, `call_events`, `evaluations`.
 
 Free slots = weekly availability minus time off minus non-cancelled appointments. Appointments must align to generated slots; a GiST exclusion constraint blocks overlapping bookings even under concurrent requests.
 
@@ -116,5 +135,6 @@ Free slots = weekly availability minus time off minus non-cancelled appointments
 ## Milestones
 
 - Week 1: Phone -> STT -> LLM -> TTS working, calendar booking, Hindi + English.
-- Week 2: FAQ RAG, human transfer, WhatsApp/SMS confirmations, reminders, CRM sync.
+- Week 2: FAQ RAG (done: local embeddings, pgvector, staff UI, eval), human transfer
+  (done: warm SIP transfer + callback fallback), WhatsApp/SMS confirmations, reminders, CRM sync.
 - Week 3: Recording, transcripts, evals, analytics dashboard, concurrency tests, demo and pricing.

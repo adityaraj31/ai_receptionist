@@ -8,8 +8,10 @@ import { useAuth } from "@/components/auth-provider";
 import {
   CalendarIcon,
   ClockIcon,
+  FaqIcon,
   LogoutIcon,
   MenuIcon,
+  PhoneIcon,
   SettingsIcon,
   StethoscopeIcon,
   UsersIcon,
@@ -26,8 +28,10 @@ const navigation: {
   adminOnly?: boolean;
 }[] = [
   { href: "/appointments", label: "Appointments", icon: CalendarIcon },
+  { href: "/callbacks", label: "Callbacks", icon: PhoneIcon },
   { href: "/doctors", label: "Doctors", icon: StethoscopeIcon },
   { href: "/availability", label: "Availability", icon: ClockIcon },
+  { href: "/faqs", label: "FAQs", icon: FaqIcon },
   { href: "/staff", label: "Staff access", icon: UsersIcon, adminOnly: true },
   { href: "/setup", label: "Clinic setup", icon: SettingsIcon },
 ];

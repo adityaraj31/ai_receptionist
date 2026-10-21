@@ -2,8 +2,10 @@ from .appointment import Appointment
 from .availability import AvailabilityRule, TimeOff
 from .base import Base, TimestampMixin
 from .call import Call, CallEvent, Evaluation, Transcript
+from .callback import CallbackTask
 from .clinic import Clinic
 from .doctor import Doctor
+from .faq import EMBEDDING_DIMENSIONS, FaqChunk
 from .patient import Patient
 from .staff import AgentApiKey, StaffInvitation, StaffUser
 
@@ -13,10 +15,13 @@ __all__ = [
     "AvailabilityRule",
     "Base",
     "Call",
+    "CallbackTask",
     "CallEvent",
     "Clinic",
     "Doctor",
+    "EMBEDDING_DIMENSIONS",
     "Evaluation",
+    "FaqChunk",
     "Patient",
     "StaffInvitation",
     "StaffUser",

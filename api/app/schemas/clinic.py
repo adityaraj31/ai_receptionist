@@ -3,7 +3,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
-from .common import ORMModel
+from .common import ORMModel, normalize_phone
 
 
 class ClinicRead(ORMModel):
@@ -13,6 +13,7 @@ class ClinicRead(ORMModel):
     address: str | None
     phone: str | None
     email: str | None
+    front_desk_number: str | None
     is_active: bool
 
 
@@ -21,6 +22,7 @@ class ClinicUpdate(BaseModel):
     timezone: str | None = Field(default=None, min_length=1, max_length=64)
     address: str | None = Field(default=None, max_length=500)
     phone: str | None = Field(default=None, max_length=40)
+    front_desk_number: str | None = Field(default=None, max_length=40)
     email: EmailStr | None = None
 
     @field_validator("name")
@@ -44,3 +46,10 @@ class ClinicUpdate(BaseModel):
         except ZoneInfoNotFoundError as exc:
             raise ValueError("Unknown timezone.") from exc
         return value
+
+    @field_validator("front_desk_number")
+    @classmethod
+    def validate_front_desk_number(cls, value: str | None) -> str | None:
+        if value is None or not value.strip():
+            return None
+        return normalize_phone(value)

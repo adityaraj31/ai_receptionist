@@ -12,6 +12,7 @@ class AgentClinicRead(BaseModel):
     address: str | None
     phone: str | None
     email: str | None
+    front_desk_number: str | None
 
 
 class AgentDoctorRead(BaseModel):

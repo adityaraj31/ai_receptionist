@@ -16,6 +16,14 @@ class Settings(BaseSettings):
     dashboard_url: str = "http://localhost:3000"
     api_title: str = "AI Receptionist API"
 
+    embedding_model: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+    embedding_dimensions: int = 384
+    fastembed_cache_path: str = ""
+    embedding_warmup: bool = True
+    faq_max_distance: float = 0.55
+    faq_high_confidence_similarity: float = 0.55
+    faq_answer_max_chars: int = 320
+
     model_config = SettingsConfigDict(
         env_file=(ROOT_DIR / ".env", ROOT_DIR / "api" / ".env"),
         env_file_encoding="utf-8",

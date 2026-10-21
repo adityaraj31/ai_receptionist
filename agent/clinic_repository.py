@@ -63,7 +63,7 @@ async def load_clinic_config_from_db(
         if clinic_id:
             clinic = await conn.fetchrow(
                 """
-                SELECT id, name, timezone, address, phone
+                SELECT id, name, timezone, address, phone, front_desk_number
                 FROM clinics
                 WHERE id = $1::uuid AND is_active = TRUE
                 """,
@@ -72,7 +72,7 @@ async def load_clinic_config_from_db(
         else:
             clinic = await conn.fetchrow(
                 """
-                SELECT id, name, timezone, address, phone
+                SELECT id, name, timezone, address, phone, front_desk_number
                 FROM clinics
                 WHERE is_active = TRUE
                 ORDER BY created_at
@@ -197,6 +197,7 @@ def build_config_from_rows(
         timezone=str(clinic.get("timezone") or "Asia/Kolkata"),
         address=str(clinic.get("address") or ""),
         phone=str(clinic.get("phone") or ""),
+        front_desk_number=str(clinic.get("front_desk_number") or ""),
         fees=str(clinic.get("fees") or ""),
         emergency_number=str(clinic.get("emergency_number") or "108"),
     )
@@ -238,6 +239,7 @@ def build_config_from_api_payload(
         timezone=config.timezone,
         address=config.address or fallback.address,
         phone=config.phone or fallback.phone,
+        front_desk_number=config.front_desk_number or fallback.front_desk_number,
         fees=fallback.fees,
         emergency_number=fallback.emergency_number,
     )

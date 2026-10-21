@@ -35,6 +35,9 @@ LIVEKIT_URL=wss://your-project.livekit.cloud
 LIVEKIT_API_KEY=...
 LIVEKIT_API_SECRET=...
 LIVEKIT_AGENT_NAME=ai-receptionist
+# Outbound trunk used to dial the clinic front desk for transfers:
+LIVEKIT_SIP_OUTBOUND_TRUNK=...
+LIVEKIT_SIP_NUMBER=+918069000000
 SARVAM_API_KEY=...
 LLM_API_KEY=...
 LLM_MODEL=gpt-4.1-mini
@@ -77,27 +80,40 @@ uv run python -m scripts.seed  # optional demo clinic/doctors/availability
 
 The agent reads:
 
-- `clinics` - name, timezone, address, phone.
+- `clinics` - name, timezone, address, phone, `front_desk_number`.
 - `doctors` - doctor name and specialization (`is_active` filters rows).
 - `availability_rules` - weekly windows (`weekday`, `start_time`, `end_time`); these
   produce the doctor days/hours and clinic open hours in the prompt.
 
-## Calendar tools
+## Tools
 
-[`agent_tools.py`](agent_tools.py) exposes four function tools to the LLM. They call the
-FastAPI backend through [`api_client.py`](api_client.py) using the clinic-scoped service
-key, so the agent never writes to Postgres directly.
+[`agent_tools.py`](agent_tools.py) exposes the function tools to the LLM. HTTP tools call
+the FastAPI backend through [`api_client.py`](api_client.py) using the clinic-scoped
+service key, so the agent never writes to Postgres directly.
 
-| Tool | API call |
+| Tool | API call / action |
 | --- | --- |
 | `check_availability(date, doctor)` | `GET /api/v1/doctors/{id}/free-slots?date=` |
 | `book_appointment(patient_name, phone, doctor, datetime)` | `POST /api/v1/appointments` |
 | `reschedule_appointment(appointment_id, datetime)` | `PATCH /api/v1/appointments/{id}/reschedule` |
 | `cancel_appointment(appointment_id)` | `POST /api/v1/appointments/{id}/cancel` |
+| `search_faq(question)` | `POST /api/v1/agent/faq/search` |
+| `transfer_to_human(reason)` | dials `front_desk_number` into the room via SIP |
+| `create_callback(name, phone, reason, message)` | `POST /api/v1/agent/callbacks` |
 
 `date` is `YYYY-MM-DD`; `datetime` is clinic-local `YYYY-MM-DDTHH:MM`. The tools match the
 requested time against the computed free slots and let the database exclusion constraint
 be the final double-booking guard.
+
+## Human transfer
+
+`transfer_to_human` uses [`transfer.py`](transfer.py) to dial the front desk into the
+caller's room with `CreateSIPParticipant(wait_until_answered=true)`. The number comes from
+`clinics.front_desk_number` (dashboard **Clinic setup**), with `TRANSFER_NUMBER` as a local
+fallback. The agent disables its own mic/speaker once the front desk answers. If the ring
+window (`TRANSFER_RING_TIMEOUT_SECONDS`, default 20) expires, the tool returns `ok=false`
+and the prompt tells the LLM to take a message and call `create_callback`. Warm transfer
+needs an outbound SIP trunk; see [`../docs/telephony.md`](../docs/telephony.md).
 
 Tool results are short JSON. Every failure returns `{"ok": false, "reason", "say"}`, where
 `say` is a one-line spoken fallback, so a slow or down API never leaves the caller in
@@ -204,5 +220,5 @@ uv run pytest
 - Sarvam's current docs recommend `STTRealtime` with server-side turn detection for new
   builds. This slice intentionally uses the legacy streaming `STT` with Silero VAD because
   the requested pipeline requires Silero VAD; revisit this before production.
-- Calendar tools (availability, book, reschedule, cancel) are wired. FAQ, transfer,
-  WhatsApp/SMS, and CRM tools are not yet.
+- Calendar, FAQ, human transfer, and callback tools are wired. WhatsApp/SMS
+  confirmations, reminders, and CRM sync are not yet.

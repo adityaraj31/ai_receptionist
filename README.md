@@ -12,7 +12,7 @@ See [AGENTS.md](AGENTS.md) for architecture, conventions, and the working agreem
 /api         FastAPI backend (appointments, calls, webhooks, dashboard API)
 /dashboard   Next.js analytics dashboard
 /infra       Dockerfiles, Postgres init, deploy configs, LiveKit SIP setup
-/evals       Transcript evaluation scripts and test conversations
+/evals       Transcript and FAQ retrieval eval scripts plus test conversations
 /docs        Architecture notes, runbooks
 ```
 
@@ -67,7 +67,13 @@ admin dashboard in [`/dashboard`](dashboard).
    ```
 
    The seed creates a demo clinic, three doctors with availability, a staff login, and
-   an agent service key. The agent loads clinic config from Postgres and falls back to
+   an agent service key. Load the sample FAQ corpus with the clinic id from the seed:
+
+   ```bash
+   uv run python -m scripts.ingest_faqs --clinic-id <uuid> --replace
+   ```
+
+   The agent loads clinic config from Postgres and falls back to
    `CLINIC_*` env values only when the database is unavailable or has no active clinic.
    See [api/README.md](api/README.md), [infra/README.md](infra/README.md), and
    [agent/README.md](agent/README.md).
@@ -92,6 +98,7 @@ All configuration is via environment variables. `.env.example` documents every v
 grouped by provider:
 
 - Core, LiveKit, telephony (Exotel/Plivo)
+- FAQ embeddings (local model, pgvector thresholds)
 - Sarvam (STT/TTS), Deepgram (English fallback)
 - LLM, Google Calendar
 - WhatsApp/Gupshup, SMS
@@ -141,7 +148,9 @@ to `.env.local` to override it. The API must allow the dashboard origin via
 
 The dashboard includes login, a first-run setup wizard, doctor management, weekly
 availability and time off, a daily appointment list with booking, rescheduling,
-cancellation, and free-slot views, plus admin-only staff management. Admins can invite
+cancellation, and free-slot views, an FAQ knowledge base with add/edit/deactivate and
+JSON/CSV upload, a Callbacks queue for failed human transfers, plus admin-only staff
+management. Admins can invite
 receptionists or other admins, promote or demote staff, and deactivate access. An invite
 is a one-time link valid for 7 days; the recipient sets a password and is signed in
 immediately. Email delivery is not connected yet, so copy the link and send it manually.
@@ -172,7 +181,6 @@ for required keys, browser testing, and latency log fields.
 
 ## Next steps
 
-1. Wire the agent tools to the API (slots, booking, reschedule, cancel).
-2. Call ingestion, transcripts, evals, and dashboard analytics.
-3. FAQ RAG with pgvector, WhatsApp/SMS confirmations, and post-call jobs.
-4. Recordings, transcripts, summaries, and cost tracking after each call.
+1. Call ingestion, transcripts, evals, and dashboard analytics.
+2. WhatsApp/SMS confirmations and post-call jobs.
+3. Recordings, transcripts, summaries, and cost tracking after each call.

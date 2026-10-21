@@ -32,6 +32,7 @@ from agent_tools import ReceptionistAgent
 from api_client import AgentApiClient
 from clinic_repository import build_config_from_api_payload, load_clinic_config_from_db
 from prompts import ClinicConfig, load_clinic_config
+from transfer import SipWarmTransfer
 
 AGENT_DIR = Path(__file__).resolve().parents[1]
 ROOT_DIR = AGENT_DIR.parent
@@ -236,6 +237,22 @@ async def receptionist(ctx: JobContext) -> None:
     clinic_config, config_source = await _resolve_clinic_config(api)
     session = _build_session(ctx.proc.userdata["vad"])
 
+    trunk_id = (
+        os.getenv("LIVEKIT_SIP_OUTBOUND_TRUNK") or os.getenv("LIVEKIT_SIP_OUTBOUND_TRUNK_ID") or ""
+    ).strip()
+    try:
+        ring_timeout = float(os.getenv("TRANSFER_RING_TIMEOUT_SECONDS", "20"))
+    except ValueError:
+        ring_timeout = 20.0
+    transfer = SipWarmTransfer(
+        ctx=ctx,
+        session=session,
+        trunk_id=trunk_id,
+        caller_id=os.getenv("LIVEKIT_SIP_NUMBER", ""),
+        ring_timeout=ring_timeout,
+        on_event=log_event,
+    )
+
     log_event(
         "session_started",
         room=ctx.room.name,
@@ -249,7 +266,11 @@ async def receptionist(ctx: JobContext) -> None:
             "book_appointment",
             "reschedule_appointment",
             "cancel_appointment",
+            "search_faq",
+            "transfer_to_human",
+            "create_callback",
         ],
+        transfer_configured=bool(trunk_id and clinic_config.front_desk_number),
         stt_model=os.getenv("SARVAM_STT_MODEL", "saaras:v4"),
         llm_model=os.getenv("LLM_MODEL", "gpt-4.1-mini"),
         tts_model=os.getenv("SARVAM_TTS_MODEL", "bulbul:v3"),
@@ -257,7 +278,11 @@ async def receptionist(ctx: JobContext) -> None:
     )
 
     await session.start(
-        agent=ReceptionistAgent(clinic_config=clinic_config, api=api),
+        agent=ReceptionistAgent(
+            clinic_config=clinic_config,
+            api=api,
+            transfer=transfer,
+        ),
         room=ctx.room,
     )
 

@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -8,8 +9,10 @@ from .api.routers import (
     appointments,
     auth,
     availability,
+    callbacks,
     clinic,
     doctors,
+    faqs,
     health,
     invitations,
     slots,
@@ -18,6 +21,7 @@ from .api.routers import (
 )
 from .config import settings
 from .db import engine
+from .services import embeddings
 
 TAGS_METADATA = [
     {"name": "Health", "description": "Service and database health checks."},
@@ -48,6 +52,14 @@ TAGS_METADATA = [
         "name": "Appointments",
         "description": "Booking, rescheduling, cancellation, and daily lists.",
     },
+    {
+        "name": "FAQs",
+        "description": "Clinic FAQ knowledge base with embeddings for voice search.",
+    },
+    {
+        "name": "Callbacks",
+        "description": "Callback tasks created when a caller cannot be transferred.",
+    },
 ]
 
 
@@ -55,7 +67,10 @@ TAGS_METADATA = [
 async def lifespan(_: FastAPI):
     if not settings.secret_key:
         raise RuntimeError("SECRET_KEY must be set before starting the API")
+    warm_task = asyncio.create_task(embeddings.awarm()) if settings.embedding_warmup else None
     yield
+    if warm_task is not None and not warm_task.done():
+        warm_task.cancel()
     await engine.dispose()
 
 
@@ -90,3 +105,5 @@ app.include_router(availability.router, prefix="/api/v1")
 app.include_router(time_off.router, prefix="/api/v1")
 app.include_router(slots.router, prefix="/api/v1")
 app.include_router(appointments.router, prefix="/api/v1")
+app.include_router(faqs.router, prefix="/api/v1")
+app.include_router(callbacks.router, prefix="/api/v1")

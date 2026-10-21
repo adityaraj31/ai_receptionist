@@ -16,9 +16,11 @@ from .availability import (
     AvailabilityRuleRead,
     AvailabilityRuleUpdate,
 )
+from .callback import CallbackCreate, CallbackRead, CallbackStatus, CallbackUpdate
 from .clinic import ClinicRead, ClinicUpdate
 from .common import Message, ORMModel
 from .doctor import DoctorCreate, DoctorRead, DoctorUpdate
+from .faq import FaqCreate, FaqRead, FaqSearchRead, FaqSearchRequest, FaqUpdate
 from .slot import FreeSlotRead
 from .staff import (
     InvitationAccept,
@@ -41,11 +43,20 @@ __all__ = [
     "AvailabilityRuleCreate",
     "AvailabilityRuleRead",
     "AvailabilityRuleUpdate",
+    "CallbackCreate",
+    "CallbackRead",
+    "CallbackStatus",
+    "CallbackUpdate",
     "ClinicRead",
     "ClinicUpdate",
     "DoctorCreate",
     "DoctorRead",
     "DoctorUpdate",
+    "FaqCreate",
+    "FaqRead",
+    "FaqSearchRead",
+    "FaqSearchRequest",
+    "FaqUpdate",
     "FreeSlotRead",
     "InvitationAccept",
     "InvitationPreview",

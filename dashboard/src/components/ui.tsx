@@ -144,6 +144,9 @@ const badgeStyles: Record<string, string> = {
   cancelled: "bg-rose-50 text-rose-700 ring-rose-600/20",
   completed: "bg-slate-100 text-slate-700 ring-slate-500/20",
   no_show: "bg-amber-50 text-amber-800 ring-amber-600/20",
+  pending: "bg-amber-50 text-amber-800 ring-amber-600/20",
+  contacted: "bg-sky-50 text-sky-700 ring-sky-600/20",
+  done: "bg-teal-50 text-teal-800 ring-teal-600/20",
 };
 
 export function StatusBadge({ status }: { status: string }) {

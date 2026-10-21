@@ -8,11 +8,17 @@ import {
   type AvailabilityRule,
   type AvailabilityRuleInput,
   type AvailabilityRuleUpdate,
+  type Callback,
+  type CallbackStatus,
+  type CallbackUpdate,
   type Clinic,
   type ClinicInput,
   type Doctor,
   type DoctorInput,
   type DoctorUpdate,
+  type Faq,
+  type FaqInput,
+  type FaqUpdate,
   type FreeSlot,
   type InvitationPreview,
   type LoginInput,
@@ -133,6 +139,21 @@ export const api = {
   updateClinic: (body: ClinicInput) =>
     unwrap<Clinic>(client.PATCH("/api/v1/clinic", { body })),
 
+  listCallbacks: (status?: CallbackStatus) =>
+    unwrap<Callback[]>(
+      client.GET("/api/v1/callbacks", {
+        params: { query: status ? { status } : {} },
+      }),
+    ),
+
+  updateCallback: (callbackId: string, body: CallbackUpdate) =>
+    unwrap<Callback>(
+      client.PATCH("/api/v1/callbacks/{callback_id}", {
+        params: { path: { callback_id: callbackId } },
+        body,
+      }),
+    ),
+
   listDoctors: (includeInactive = false) =>
     unwrap<Doctor[]>(
       client.GET("/api/v1/doctors", {
@@ -159,6 +180,31 @@ export const api = {
     unwrap<void>(
       client.DELETE("/api/v1/doctors/{doctor_id}", {
         params: { path: { doctor_id: doctorId } },
+      }),
+    ),
+
+  listFaqs: (includeInactive = false) =>
+    unwrap<Faq[]>(
+      client.GET("/api/v1/faqs", {
+        params: { query: { include_inactive: includeInactive } },
+      }),
+    ),
+
+  createFaq: (body: FaqInput) =>
+    unwrap<Faq>(client.POST("/api/v1/faqs", { body })),
+
+  updateFaq: (faqId: string, body: FaqUpdate) =>
+    unwrap<Faq>(
+      client.PATCH("/api/v1/faqs/{faq_id}", {
+        params: { path: { faq_id: faqId } },
+        body,
+      }),
+    ),
+
+  deactivateFaq: (faqId: string) =>
+    unwrap<void>(
+      client.DELETE("/api/v1/faqs/{faq_id}", {
+        params: { path: { faq_id: faqId } },
       }),
     ),
 

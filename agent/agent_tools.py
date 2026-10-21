@@ -16,6 +16,7 @@ from livekit.agents import Agent, llm
 
 from api_client import AgentApiError, AgentApiRejected
 from prompts import ClinicConfig, Doctor, build_system_prompt
+from transfer import TransferService
 
 FALLBACK_SAY = (
     "Sorry, I couldn't complete that right now. "
@@ -25,15 +26,133 @@ NO_DOCTORS_SAY = (
     "I don't have the doctor list available right now. "
     "May I take your name and number so the clinic team can call you back?"
 )
+TRANSFER_UNAVAILABLE_SAY = (
+    "I couldn't reach the front desk. "
+    "May I take your name and number so the clinic team can call you back?"
+)
+CALLBACK_SAVE_FAILED_SAY = (
+    "I'm sorry, I couldn't save those details. Please call the clinic and the team will help you."
+)
 
 
 class ReceptionistAgent(Agent):
     """LiveKit agent whose prompt and tools are backed by the clinic API."""
 
-    def __init__(self, *, clinic_config: ClinicConfig, api: Any) -> None:
+    def __init__(
+        self,
+        *,
+        clinic_config: ClinicConfig,
+        api: Any,
+        transfer: TransferService | None = None,
+    ) -> None:
         self._clinic = clinic_config
         self._api = api
+        self._transfer = transfer
         super().__init__(instructions=build_system_prompt(clinic_config))
+
+    @llm.function_tool
+    async def search_faq(self, question: str) -> dict[str, Any]:
+        """Look up clinic information such as timings, fees, address, services, or policies.
+
+        Args:
+            question: The caller's question, in their own words.
+        """
+        try:
+            result = await self._api.search_faq(question)
+        except AgentApiRejected:
+            return _failure("rejected", FALLBACK_SAY)
+        except AgentApiError:
+            return _failure("unavailable", FALLBACK_SAY)
+
+        if not result.get("found"):
+            return {
+                "ok": True,
+                "found": False,
+                "say": (
+                    "I don't have that information right now. "
+                    "The clinic team can call you back with the details."
+                ),
+            }
+
+        return {
+            "ok": True,
+            "found": True,
+            "answer": result.get("answer", ""),
+        }
+
+    @llm.function_tool
+    async def transfer_to_human(self, reason: str) -> dict[str, Any]:
+        """Transfer the caller to the clinic front desk and wait for an answer.
+
+        Use this for emergencies, explicit requests for a human, billing or insurance
+        questions, repeated frustration, or after two failed attempts to understand.
+        If the front desk does not answer, take a callback instead.
+
+        Args:
+            reason: Short reason for the transfer, such as "emergency" or "asks for a human".
+        """
+        if self._transfer is None:
+            return _failure("not_configured", TRANSFER_UNAVAILABLE_SAY)
+        if not self._clinic.front_desk_number:
+            return _failure("not_configured", TRANSFER_UNAVAILABLE_SAY)
+
+        try:
+            outcome = await self._transfer.transfer(
+                self._clinic.front_desk_number,
+                reason.strip() or "caller requested a human",
+            )
+        except Exception:
+            return _failure("transfer_error", TRANSFER_UNAVAILABLE_SAY)
+
+        if not outcome.ok:
+            return _failure(outcome.reason or "transfer_failed", TRANSFER_UNAVAILABLE_SAY)
+
+        return {"ok": True, "transferred": True, "reason": reason}
+
+    @llm.function_tool
+    async def create_callback(
+        self,
+        name: str,
+        phone: str,
+        reason: str,
+        message: str = "",
+    ) -> dict[str, Any]:
+        """Create a callback task for the clinic team.
+
+        Use this after a failed transfer, or when the caller asks for a callback.
+        Collect the caller's name, phone number, and a short message first.
+
+        Args:
+            name: Caller's name.
+            phone: Callback phone number.
+            reason: Why the caller needs a callback.
+            message: One-line message or summary for the clinic team.
+        """
+        if not name.strip() or not phone.strip():
+            return _failure(
+                "missing_details",
+                "I need both your name and a callback number. Could you share them?",
+            )
+
+        try:
+            result = await self._api.create_callback(
+                {
+                    "caller_name": name.strip(),
+                    "phone": phone.strip(),
+                    "reason": reason.strip(),
+                    "message": message.strip(),
+                }
+            )
+        except AgentApiRejected:
+            return _failure("rejected", CALLBACK_SAVE_FAILED_SAY)
+        except AgentApiError:
+            return _failure("unavailable", CALLBACK_SAVE_FAILED_SAY)
+
+        return {
+            "ok": True,
+            "callback_id": result["id"],
+            "status": result["status"],
+        }
 
     @llm.function_tool
     async def check_availability(self, date: str, doctor: str = "") -> dict[str, Any]:

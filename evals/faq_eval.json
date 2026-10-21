@@ -1,0 +1,60 @@
+{
+  "cases": [
+    {
+      "query": "What time do you open on Saturday?",
+      "expected_question": "What are the clinic timings and opening hours?"
+    },
+    {
+      "query": "clinic address",
+      "expected_question": "What is the clinic address and location?"
+    },
+    {
+      "query": "How much is a specialist consultation?",
+      "expected_question": "How much is the consultation fee?"
+    },
+    {
+      "query": "Is there a paediatrician?",
+      "expected_question": "Which doctors are available and what are their specialties?"
+    },
+    {
+      "query": "Can I book online?",
+      "expected_question": "How can I book an appointment online?"
+    },
+    {
+      "query": "I need to cancel my appointment",
+      "expected_question": "Can I reschedule or cancel an appointment?"
+    },
+    {
+      "query": "Can I just walk in?",
+      "expected_question": "Do you accept walk-ins without an appointment?"
+    },
+    {
+      "query": "Do you take UPI?",
+      "expected_question": "What payment methods do you accept, such as UPI or cards?"
+    },
+    {
+      "query": "Is there parking for a car?",
+      "expected_question": "Is parking available at the clinic?"
+    },
+    {
+      "query": "Do you give flu shots?",
+      "expected_question": "Do you offer vaccinations and flu shots?"
+    },
+    {
+      "query": "Can I get reports on email?",
+      "expected_question": "Can I get my test reports by email?"
+    },
+    {
+      "query": "What number should I call in an emergency?",
+      "expected_question": "What should I do in an emergency?"
+    },
+    {
+      "query": "क्लिनिक कितने बजे खुलता है?",
+      "expected_question": "What are the clinic timings and opening hours?"
+    },
+    {
+      "query": "पार्किंग की सुविधा है क्या?",
+      "expected_question": "Is parking available at the clinic?"
+    }
+  ]
+}

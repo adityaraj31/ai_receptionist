@@ -114,6 +114,20 @@ class AgentApiClient:
             f"/api/v1/appointments/{appointment_id}/cancel",
         )
 
+    async def search_faq(self, query: str) -> dict[str, Any]:
+        return await self._request(
+            "POST",
+            "/api/v1/agent/faq/search",
+            json={"query": query},
+        )
+
+    async def create_callback(self, payload: dict[str, Any]) -> dict[str, Any]:
+        return await self._request(
+            "POST",
+            "/api/v1/agent/callbacks",
+            json=payload,
+        )
+
 
 def _error_detail(response: httpx.Response) -> tuple[str, Any]:
     try:

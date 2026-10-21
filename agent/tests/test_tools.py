@@ -9,6 +9,7 @@ import httpx
 from agent_tools import ReceptionistAgent
 from api_client import AgentApiClient
 from prompts import ClinicConfig, Doctor
+from transfer import TransferOutcome
 
 DOCTOR_ID = "11111111-1111-1111-1111-111111111111"
 OTHER_DOCTOR_ID = "22222222-2222-2222-2222-222222222222"
@@ -18,7 +19,10 @@ SLOT_START = f"{DAY}T10:00:00+05:30"
 SLOT_END = f"{DAY}T10:15:00+05:30"
 
 
-def make_config(doctors: tuple[Doctor, ...] | None = None) -> ClinicConfig:
+def make_config(
+    doctors: tuple[Doctor, ...] | None = None,
+    front_desk_number: str = "",
+) -> ClinicConfig:
     return ClinicConfig(
         name="Demo Family Clinic",
         doctors=doctors
@@ -28,13 +32,32 @@ def make_config(doctors: tuple[Doctor, ...] | None = None) -> ClinicConfig:
         ),
         timings={"Monday": "09:00-18:00"},
         timezone="Asia/Kolkata",
+        front_desk_number=front_desk_number,
     )
 
 
-def make_agent(handler: Any, config: ClinicConfig | None = None) -> ReceptionistAgent:
+def make_agent(
+    handler: Any,
+    config: ClinicConfig | None = None,
+    transfer: Any = None,
+) -> ReceptionistAgent:
     transport = httpx.MockTransport(handler)
     api = AgentApiClient("http://api.test", "test-key", transport=transport)
-    return ReceptionistAgent(clinic_config=config or make_config(), api=api)
+    return ReceptionistAgent(
+        clinic_config=config or make_config(),
+        api=api,
+        transfer=transfer,
+    )
+
+
+class FakeTransfer:
+    def __init__(self, outcome: TransferOutcome) -> None:
+        self.outcome = outcome
+        self.calls: list[tuple[str, str]] = []
+
+    async def transfer(self, number: str, reason: str) -> TransferOutcome:
+        self.calls.append((number, reason))
+        return self.outcome
 
 
 def slot(starts_at: str = SLOT_START, ends_at: str = SLOT_END) -> dict[str, Any]:
@@ -67,10 +90,10 @@ def appointment() -> dict[str, Any]:
     }
 
 
-def run_tool(agent: ReceptionistAgent, name: str, **kwargs: Any) -> dict[str, Any]:
+def run_tool(agent: ReceptionistAgent, tool_name: str, **kwargs: Any) -> dict[str, Any]:
     async def scenario() -> dict[str, Any]:
         try:
-            return await getattr(agent, name)(**kwargs)
+            return await getattr(agent, tool_name)(**kwargs)
         finally:
             await agent._api.aclose()
 
@@ -269,3 +292,151 @@ def test_invalid_datetime_returns_clarifying_line() -> None:
     assert result["ok"] is False
     assert result["reason"] == "invalid_datetime"
     assert result["say"]
+
+
+def test_search_faq_returns_short_answer() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.method == "POST"
+        assert request.url.path == "/api/v1/agent/faq/search"
+        assert request.headers["x-service-key"] == "test-key"
+        assert json.loads(request.content) == {"query": "Do you have parking?"}
+        return httpx.Response(
+            200,
+            json={
+                "found": True,
+                "answer": "Free parking is available in the basement.",
+                "question": "Where can I park?",
+                "score": 0.82,
+                "latency_ms": 42,
+            },
+        )
+
+    result = run_tool(make_agent(handler), "search_faq", question="Do you have parking?")
+
+    assert result == {
+        "ok": True,
+        "found": True,
+        "answer": "Free parking is available in the basement.",
+    }
+
+
+def test_search_faq_no_match_offers_callback() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"found": False, "latency_ms": 30})
+
+    result = run_tool(make_agent(handler), "search_faq", question="Do you do MRI?")
+
+    assert result["ok"] is True
+    assert result["found"] is False
+    assert "call you back" in result["say"]
+
+
+def test_search_faq_failure_returns_fallback() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(503, json={"detail": "unavailable"})
+
+    result = run_tool(make_agent(handler), "search_faq", question="timings")
+
+    assert result["ok"] is False
+    assert result["reason"] == "unavailable"
+    assert "call you back" in result["say"]
+
+
+def test_transfer_to_human_dials_front_desk() -> None:
+    transfer = FakeTransfer(TransferOutcome(True, "connected"))
+    agent = make_agent(
+        lambda request: httpx.Response(500),
+        make_config(front_desk_number="+918069000000"),
+        transfer,
+    )
+
+    result = run_tool(agent, "transfer_to_human", reason="caller asks for a human")
+
+    assert result == {"ok": True, "transferred": True, "reason": "caller asks for a human"}
+    assert transfer.calls == [("+918069000000", "caller asks for a human")]
+
+
+def test_transfer_to_human_without_front_desk_takes_callback() -> None:
+    transfer = FakeTransfer(TransferOutcome(True, "connected"))
+    agent = make_agent(lambda request: httpx.Response(500), transfer=transfer)
+
+    result = run_tool(agent, "transfer_to_human", reason="emergency")
+
+    assert result["ok"] is False
+    assert result["reason"] == "not_configured"
+    assert "front desk" in result["say"]
+    assert transfer.calls == []
+
+
+def test_transfer_to_human_reports_no_answer() -> None:
+    transfer = FakeTransfer(TransferOutcome(False, "no_answer"))
+    agent = make_agent(
+        lambda request: httpx.Response(500),
+        make_config(front_desk_number="+918069000000"),
+        transfer,
+    )
+
+    result = run_tool(agent, "transfer_to_human", reason="asks for a human")
+
+    assert result["ok"] is False
+    assert result["reason"] == "no_answer"
+    assert "call you back" in result["say"]
+
+
+def test_create_callback_posts_caller_details() -> None:
+    captured: dict[str, Any] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.method == "POST"
+        assert request.url.path == "/api/v1/agent/callbacks"
+        captured.update(json.loads(request.content))
+        return httpx.Response(
+            201,
+            json={
+                "id": "66666666-6666-6666-6666-666666666666",
+                "caller_name": "Ravi Kumar",
+                "phone": "+919000000000",
+                "reason": "transfer_no_answer",
+                "message": "Call after 5 PM.",
+                "status": "pending",
+                "source": "agent",
+                "created_at": "2026-10-21T10:00:00Z",
+                "updated_at": "2026-10-21T10:00:00Z",
+            },
+        )
+
+    result = run_tool(
+        make_agent(handler),
+        "create_callback",
+        name="Ravi Kumar",
+        phone="+919000000000",
+        reason="transfer_no_answer",
+        message="Call after 5 PM.",
+    )
+
+    assert result["ok"] is True
+    assert result["status"] == "pending"
+    assert result["callback_id"] == "66666666-6666-6666-6666-666666666666"
+    assert captured == {
+        "caller_name": "Ravi Kumar",
+        "phone": "+919000000000",
+        "reason": "transfer_no_answer",
+        "message": "Call after 5 PM.",
+    }
+
+
+def test_create_callback_failure_does_not_confirm() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(503, json={"detail": "unavailable"})
+
+    result = run_tool(
+        make_agent(handler),
+        "create_callback",
+        name="Ravi Kumar",
+        phone="+919000000000",
+        reason="transfer_no_answer",
+    )
+
+    assert result["ok"] is False
+    assert result["reason"] == "unavailable"
+    assert "couldn't save" in result["say"]

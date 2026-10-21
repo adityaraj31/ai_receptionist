@@ -293,15 +293,65 @@ Provider logs first (`cx.plivo.com/logs`, Exotel trunk logs, Exotel Flow logs), 
 LiveKit **Telephony** dashboard. Use `sip.callID` to line them up. Full list of codes:
 [SIP troubleshooting](https://docs.livekit.io/reference/telephony/troubleshooting.md).
 
+## Step 6 - human transfer to the front desk
+
+The `transfer_to_human` tool dials the clinic front desk into the **caller's existing
+room** with `CreateSIPParticipant(wait_until_answered=true)`. The caller stays in the room,
+so if the front desk does not answer the agent can still take a message.
+
+1. Set the number in the dashboard: **Clinic setup -> Front desk number**. The agent loads
+   it from `GET /api/v1/agent/clinic-config`. `TRANSFER_NUMBER` in `.env` is only a
+   fallback for local runs.
+2. Create an outbound trunk (once per provider). Example for Plivo:
+
+   ```bash
+   lk sip outbound create \
+     --name "Clinic front desk outbound" \
+     --address "<trunk>.zt.plivo.com" \
+     --numbers "$LIVEKIT_SIP_NUMBER" \
+     --destination-country IN \
+     --transport tls \
+     --auth-user "$PLIVO_SIP_USERNAME" \
+     --auth-pass "$PLIVO_SIP_PASSWORD"
+   ```
+
+   For Exotel, use the outbound edge (`in.voip.exotel.com`, port 5070 TCP or 443 TLS) and
+   the digest credentials from Step 3a. The trunk `numbers` list must include the caller ID
+   you want the clinic to see; `LIVEKIT_SIP_NUMBER` is sent as `sip_number`.
+3. Put the returned trunk id in `.env` as `LIVEKIT_SIP_OUTBOUND_TRUNK` and restart the
+   agent worker.
+4. Tune `TRANSFER_RING_TIMEOUT_SECONDS` (default 20). When the ring window expires, the
+   agent says the front desk is unavailable, takes the caller's name, number, and message,
+   and creates a callback task through `POST /api/v1/agent/callbacks`.
+
+Transfer flow:
+
+```
+caller + agent in call-<random>
+  -> agent says "please hold"
+  -> CreateSIPParticipant(front desk, wait_until_answered, ringing_timeout)
+  -> answered: front desk joins the same room; agent disables its mic/speaker
+  -> caller and front desk talk until either hangs up, then the room closes
+  -> no answer: agent re-enables audio and takes a callback
+```
+
+The agent triggers a transfer on emergencies, explicit human requests, billing/insurance
+questions, repeated frustration, and after two failed attempts to understand. The dashboard
+**Callbacks** page lists fallback tasks (`pending`, `contacted`, `done`).
+
+> Warm transfer needs an outbound trunk. LiveKit Phone Numbers are inbound-only, so the
+> front desk leg must go through Exotel/Plivo. Cold transfer via SIP REFER is not used
+> because it cannot fall back when the destination does not answer.
+
 ## Outbound calls (later, for reminders)
 
 Reminders are a Week 2+ item. When added, they will originate from the worker with
-`CreateSIPParticipant` (or `lk sip participant create`), most likely via a stored LiveKit
-outbound trunk:
+`CreateSIPParticipant` (or `lk sip participant create`) using the outbound trunk from
+Step 6:
 
 - Exotel edge (digest): `in.voip.exotel.com:5070` TCP or `:443` TLS, with the trunk
   credentials created in Step 3a.
-- Set `destination_country: "in"` so outbound calls originate from India.
+- Set `destination_country: "IN"` so outbound calls originate from India.
 - Keep a consent flag before dialing: DPDP + TRAI rules mean no outbound calling without
   recorded consent.
 

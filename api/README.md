@@ -153,6 +153,33 @@ just the JWT claims.
 | `GET` | `/api/v1/appointments/{id}` | staff | Get appointment |
 | `PATCH` | `/api/v1/appointments/{id}/reschedule` | staff or agent | Move appointment |
 | `POST` | `/api/v1/appointments/{id}/cancel` | staff or agent | Cancel appointment |
+| `GET` | `/api/v1/faqs` | staff | List clinic FAQs (`include_inactive=true` optional) |
+| `POST` | `/api/v1/faqs` | staff | Add and embed an FAQ |
+| `PATCH` | `/api/v1/faqs/{id}` | staff | Edit and re-embed an FAQ |
+| `DELETE` | `/api/v1/faqs/{id}` | staff | Deactivate an FAQ |
+| `POST` | `/api/v1/agent/faq/search` | agent | Embed a query and return the closest FAQ |
+| `GET` | `/api/v1/callbacks?status=pending` | staff | List callback tasks |
+| `PATCH` | `/api/v1/callbacks/{id}` | staff | Mark a callback contacted/done/cancelled |
+| `POST` | `/api/v1/agent/callbacks` | agent | Create a callback after a failed transfer |
+
+## FAQ retrieval
+
+`faq_chunks` stores a question embedding plus sentence-aligned answer embeddings per
+clinic FAQ, with an HNSW cosine index. The API embeds on the host with the local
+`fastembed` model, so no FAQ or caller text goes to an embeddings provider. The agent
+endpoint trims answers to two sentences and returns `found=false` below the confidence
+threshold. Bulk-load the seed corpus with
+`uv run python -m scripts.ingest_faqs --clinic-id <uuid> --replace` and run
+`../evals/run_faq_eval.py` against a running API. See [../docs/faq.md](../docs/faq.md).
+
+## Human transfer and callbacks
+
+`PATCH /api/v1/clinic` accepts `front_desk_number`, stored on `clinics` and returned to the
+agent by `/api/v1/agent/clinic-config`. The `transfer_to_human` tool dials that number into
+the live call with a LiveKit outbound trunk (`LIVEKIT_SIP_OUTBOUND_TRUNK`) and waits
+`TRANSFER_RING_TIMEOUT_SECONDS`. If nobody answers, the agent takes a message and posts it
+to `/api/v1/agent/callbacks`; staff see it on the dashboard Callbacks page. See
+[../docs/telephony.md](../docs/telephony.md).
 
 ## Slot rules
 

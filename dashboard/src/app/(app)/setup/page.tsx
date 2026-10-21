@@ -52,6 +52,7 @@ export default function SetupPage() {
   const [timezone, setTimezone] = useState("Asia/Kolkata");
   const [address, setAddress] = useState("");
   const [phone, setPhone] = useState("");
+  const [frontDeskNumber, setFrontDeskNumber] = useState("");
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -69,6 +70,7 @@ export default function SetupPage() {
     setTimezone(clinic.timezone);
     setAddress(clinic.address ?? "");
     setPhone(clinic.phone ?? "");
+    setFrontDeskNumber(clinic.front_desk_number ?? "");
     setEmail(clinic.email ?? "");
   }, [clinic]);
 
@@ -103,6 +105,7 @@ export default function SetupPage() {
         timezone,
         address: address.trim() || null,
         phone: phone.trim() || null,
+        front_desk_number: frontDeskNumber.trim() || null,
         email: email.trim() || null,
       });
       setClinic(updated);
@@ -265,6 +268,24 @@ export default function SetupPage() {
                   placeholder="hello@clinic.com"
                 />
               </div>
+            </div>
+
+            <div>
+              <label className={labelClass} htmlFor="setup-front-desk">
+                Front desk number
+              </label>
+              <input
+                id="setup-front-desk"
+                className={inputClass}
+                type="tel"
+                value={frontDeskNumber}
+                onChange={(event) => setFrontDeskNumber(event.target.value)}
+                placeholder="+91 80690 00000"
+              />
+              <p className="mt-1 text-xs text-slate-500">
+                The AI transfers urgent calls and human requests to this number.
+                Use E.164 format, for example +918069000000.
+              </p>
             </div>
 
             <div className="flex justify-end">

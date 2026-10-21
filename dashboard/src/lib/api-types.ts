@@ -1,11 +1,18 @@
 import type { components } from "./api-schema";
 
 export type Staff = components["schemas"]["StaffRead"];
+export type Callback = components["schemas"]["CallbackRead"];
+export type CallbackInput = components["schemas"]["CallbackCreate"];
+export type CallbackStatus = Callback["status"];
+export type CallbackUpdate = components["schemas"]["CallbackUpdate"];
 export type Clinic = components["schemas"]["ClinicRead"];
 export type ClinicInput = components["schemas"]["ClinicUpdate"];
 export type Doctor = components["schemas"]["DoctorRead"];
 export type DoctorInput = components["schemas"]["DoctorCreate"];
 export type DoctorUpdate = components["schemas"]["DoctorUpdate"];
+export type Faq = components["schemas"]["FaqRead"];
+export type FaqInput = components["schemas"]["FaqCreate"];
+export type FaqUpdate = components["schemas"]["FaqUpdate"];
 export type AvailabilityRule = components["schemas"]["AvailabilityRuleRead"];
 export type AvailabilityRuleInput = components["schemas"]["AvailabilityRuleCreate"];
 export type AvailabilityRuleUpdate = components["schemas"]["AvailabilityRuleUpdate"];

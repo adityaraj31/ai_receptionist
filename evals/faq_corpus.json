@@ -1,0 +1,52 @@
+{
+  "faqs": [
+    {
+      "question": "What are the clinic timings and opening hours?",
+      "answer": "We are open Monday to Saturday from 9:00 AM to 6:30 PM. We are closed on Sundays and public holidays."
+    },
+    {
+      "question": "What is the clinic address and location?",
+      "answer": "We are at 2nd Floor, Lotus Medical Centre, 14 MG Road, Indiranagar, Bengaluru 560038. The nearest metro station is Indiranagar."
+    },
+    {
+      "question": "How much is the consultation fee?",
+      "answer": "General physician consultations cost INR 500. Specialist consultations cost INR 800. Follow-up visits within 14 days are INR 200."
+    },
+    {
+      "question": "Which doctors are available and what are their specialties?",
+      "answer": "Dr. Asha Rao is our general physician. Dr. Vikram Shah is our paediatrician. Both consult in Hindi and English."
+    },
+    {
+      "question": "How can I book an appointment online?",
+      "answer": "Call this number, use the clinic website, or ask me to book for you. We need your name, phone number, preferred doctor, and a time."
+    },
+    {
+      "question": "Can I reschedule or cancel an appointment?",
+      "answer": "Yes. Call us at least 4 hours before your appointment to reschedule or cancel. There is no cancellation fee."
+    },
+    {
+      "question": "Do you accept walk-ins without an appointment?",
+      "answer": "Yes, walk-ins are welcome between 10:00 AM and 1:00 PM. Waiting time is usually under 30 minutes."
+    },
+    {
+      "question": "What payment methods do you accept, such as UPI or cards?",
+      "answer": "We accept cash, all major credit and debit cards, UPI, and net banking. We do not accept cheques."
+    },
+    {
+      "question": "Is parking available at the clinic?",
+      "answer": "Yes. Two-wheeler parking is free. Car parking is available in the basement for INR 30 per hour."
+    },
+    {
+      "question": "Do you offer vaccinations and flu shots?",
+      "answer": "Yes. We provide childhood vaccinations, flu shots, and tetanus boosters. Please bring the vaccination card."
+    },
+    {
+      "question": "Can I get my test reports by email?",
+      "answer": "Yes. Email us at reports@demo-clinic.example.com with your patient ID. Reports are sent within one working day."
+    },
+    {
+      "question": "What should I do in an emergency?",
+      "answer": "Call 108 for an ambulance or go to the nearest emergency department. Do not wait for a clinic appointment."
+    }
+  ]
+}

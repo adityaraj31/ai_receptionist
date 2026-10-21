@@ -55,6 +55,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/agent/clinic-config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Clinic config for the voice agent
+         * @description Service-key endpoint. Returns the clinic, active doctors, and active availability rules so the voice agent can inject them into its prompt.
+         */
+        get: operations["clinic_config_api_v1_agent_clinic_config_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/agent/faq/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Search the clinic FAQ knowledge base
+         * @description Service-key endpoint used by the voice agent. Embeds the caller's question locally, returns the closest active clinic FAQ, and trims the answer to two short sentences for speech.
+         */
+        post: operations["search_faq_api_v1_agent_faq_search_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/agent/callbacks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create a callback task
+         * @description Service-key endpoint used by the voice agent when a human transfer fails or the caller asks for a callback.
+         */
+        post: operations["create_callback_api_v1_agent_callbacks_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/invitations/{token}": {
         parameters: {
             query?: never;
@@ -371,10 +431,146 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/faqs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List clinic FAQs */
+        get: operations["list_clinic_faqs_api_v1_faqs_get"];
+        put?: never;
+        /** Add an FAQ */
+        post: operations["create_faq_api_v1_faqs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/faqs/{faq_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Deactivate an FAQ */
+        delete: operations["deactivate_faq_api_v1_faqs__faq_id__delete"];
+        options?: never;
+        head?: never;
+        /** Edit an FAQ */
+        patch: operations["update_faq_api_v1_faqs__faq_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/callbacks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List callback tasks for the clinic */
+        get: operations["list_callbacks_api_v1_callbacks_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/callbacks/{callback_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update a callback task status */
+        patch: operations["update_callback_api_v1_callbacks__callback_id__patch"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AgentAvailabilityRead */
+        AgentAvailabilityRead: {
+            /**
+             * Doctor Id
+             * Format: uuid
+             */
+            doctor_id: string;
+            /** Weekday */
+            weekday: number;
+            /**
+             * Start Time
+             * Format: time
+             */
+            start_time: string;
+            /**
+             * End Time
+             * Format: time
+             */
+            end_time: string;
+            /** Slot Minutes */
+            slot_minutes: number;
+        };
+        /** AgentClinicConfigRead */
+        AgentClinicConfigRead: {
+            clinic: components["schemas"]["AgentClinicRead"];
+            /** Doctors */
+            doctors: components["schemas"]["AgentDoctorRead"][];
+            /** Availability */
+            availability: components["schemas"]["AgentAvailabilityRead"][];
+        };
+        /** AgentClinicRead */
+        AgentClinicRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Timezone */
+            timezone: string;
+            /** Address */
+            address: string | null;
+            /** Phone */
+            phone: string | null;
+            /** Email */
+            email: string | null;
+            /** Front Desk Number */
+            front_desk_number: string | null;
+        };
+        /** AgentDoctorRead */
+        AgentDoctorRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Specialization */
+            specialization: string;
+            /** Languages */
+            languages: string[];
+            /** Fee */
+            fee: string;
+        };
         /** AppointmentCreate */
         AppointmentCreate: {
             /**
@@ -535,6 +731,64 @@ export interface components {
             /** Is Active */
             is_active?: boolean | null;
         };
+        /** CallbackCreate */
+        CallbackCreate: {
+            /** Caller Name */
+            caller_name: string;
+            /** Phone */
+            phone: string;
+            /**
+             * Reason
+             * @default
+             */
+            reason: string;
+            /**
+             * Message
+             * @default
+             */
+            message: string;
+        };
+        /** CallbackRead */
+        CallbackRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Caller Name */
+            caller_name: string;
+            /** Phone */
+            phone: string;
+            /** Reason */
+            reason: string;
+            /** Message */
+            message: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "contacted" | "done" | "cancelled";
+            /** Source */
+            source: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** CallbackUpdate */
+        CallbackUpdate: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "contacted" | "done" | "cancelled";
+        };
         /** ClinicRead */
         ClinicRead: {
             /**
@@ -552,6 +806,8 @@ export interface components {
             phone: string | null;
             /** Email */
             email: string | null;
+            /** Front Desk Number */
+            front_desk_number: string | null;
             /** Is Active */
             is_active: boolean;
         };
@@ -565,6 +821,8 @@ export interface components {
             address?: string | null;
             /** Phone */
             phone?: string | null;
+            /** Front Desk Number */
+            front_desk_number?: string | null;
             /** Email */
             email?: string | null;
         };
@@ -623,6 +881,75 @@ export interface components {
             languages?: string[] | null;
             /** Fee */
             fee?: number | string | null;
+            /** Is Active */
+            is_active?: boolean | null;
+        };
+        /** FaqCreate */
+        FaqCreate: {
+            /** Question */
+            question: string;
+            /** Answer */
+            answer: string;
+            /**
+             * Is Active
+             * @default true
+             */
+            is_active: boolean;
+        };
+        /** FaqRead */
+        FaqRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Question */
+            question: string;
+            /** Answer */
+            answer: string;
+            /** Is Active */
+            is_active: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** FaqSearchRead */
+        FaqSearchRead: {
+            /** Found */
+            found: boolean;
+            /** Answer */
+            answer?: string | null;
+            /** Question */
+            question?: string | null;
+            /**
+             * Score
+             * @default 0
+             */
+            score: number;
+            /**
+             * Latency Ms
+             * @default 0
+             */
+            latency_ms: number;
+        };
+        /** FaqSearchRequest */
+        FaqSearchRequest: {
+            /** Query */
+            query: string;
+        };
+        /** FaqUpdate */
+        FaqUpdate: {
+            /** Question */
+            question?: string | null;
+            /** Answer */
+            answer?: string | null;
             /** Is Active */
             is_active?: boolean | null;
         };
@@ -962,6 +1289,99 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StaffRead"];
+                };
+            };
+        };
+    };
+    clinic_config_api_v1_agent_clinic_config_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentClinicConfigRead"];
+                };
+            };
+        };
+    };
+    search_faq_api_v1_agent_faq_search_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FaqSearchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FaqSearchRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description FAQ retrieval is temporarily unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    create_callback_api_v1_agent_callbacks_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CallbackCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CallbackRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -2018,6 +2438,243 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_clinic_faqs_api_v1_faqs_get: {
+        parameters: {
+            query?: {
+                include_inactive?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FaqRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_faq_api_v1_faqs_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FaqCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FaqRead"];
+                };
+            };
+            /** @description An FAQ with this question already exists */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Embedding service unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    deactivate_faq_api_v1_faqs__faq_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                faq_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description FAQ not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_faq_api_v1_faqs__faq_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                faq_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FaqUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FaqRead"];
+                };
+            };
+            /** @description FAQ not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An FAQ with this question already exists */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Embedding service unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_callbacks_api_v1_callbacks_get: {
+        parameters: {
+            query?: {
+                status?: ("pending" | "contacted" | "done" | "cancelled") | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CallbackRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_callback_api_v1_callbacks__callback_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                callback_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CallbackUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CallbackRead"];
+                };
             };
             /** @description Validation Error */
             422: {
