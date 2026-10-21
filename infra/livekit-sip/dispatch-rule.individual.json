@@ -1,0 +1,15 @@
+{
+  "name": "ai-receptionist inbound",
+  "rule": {
+    "dispatch_rule_individual": {
+      "room_prefix": "call-"
+    }
+  },
+  "room_config": {
+    "agents": [
+      {
+        "agent_name": "ai-receptionist"
+      }
+    ]
+  }
+}

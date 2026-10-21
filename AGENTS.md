@@ -12,6 +12,12 @@ Caller -> PSTN -> Exotel/Plivo -> SIP trunk -> LiveKit SIP -> LiveKit Room
    -> Postgres -> Analytics dashboard
 ```
 
+Inbound telephony is LiveKit SIP: one inbound trunk per DID plus an individual dispatch
+rule that routes each caller to its own room and dispatches the agent via
+`room_config.agents[].agent_name` (must equal `LIVEKIT_AGENT_NAME`). Setup scripts and the
+runbook are in `/infra/livekit-sip` and `docs/telephony.md`. Use the region-pinned
+`.india.sip.livekit.cloud` endpoint for Indian numbers.
+
 ## Tech stack
 
 - Agent: Python 3.11+, LiveKit Agents (cascaded pipeline, NOT speech-to-speech)
@@ -33,8 +39,13 @@ Caller -> PSTN -> Exotel/Plivo -> SIP trunk -> LiveKit SIP -> LiveKit Room
 ```
 /agent       LiveKit agent worker (voice pipeline, tools, prompts)
 /api         FastAPI backend (appointments, calls, webhooks, dashboard API)
+## Architecture
+
+```
+Caller -> PSTN -> Exotel/Plivo -> SIP trunk -> LiveKit SIP -> LiveKit Room
+   -> Agent worker (Python): VAD -> STT -> LLM (tools) -> TTS
 /dashboard   Next.js analytics dashboard
-/infra       Dockerfiles, docker-compose, deploy configs
+/infra       Dockerfiles, docker-compose, deploy configs, LiveKit SIP setup scripts
 /evals       Transcript evaluation scripts and test conversations
 /docs        Architecture notes, runbooks
 ```

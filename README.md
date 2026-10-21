@@ -11,7 +11,7 @@ See [AGENTS.md](AGENTS.md) for architecture, conventions, and the working agreem
 /agent       LiveKit agent worker (voice pipeline, tools, prompts)
 /api         FastAPI backend (appointments, calls, webhooks, dashboard API)
 /dashboard   Next.js analytics dashboard
-/infra       Dockerfiles, Postgres init, deploy configs
+/infra       Dockerfiles, Postgres init, deploy configs, LiveKit SIP setup
 /evals       Transcript evaluation scripts and test conversations
 /docs        Architecture notes, runbooks
 ```

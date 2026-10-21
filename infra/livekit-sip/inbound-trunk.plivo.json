@@ -1,0 +1,7 @@
+{
+  "name": "Plivo inbound",
+  "numbers": [
+    "+918069000000"
+  ],
+  "krisp_enabled": true
+}

@@ -31,6 +31,18 @@ and `vector` (pgvector) for future FAQ retrieval.
 To apply schema changes against a cloud database, set `DATABASE_URL` in `.env` and run
 the same `uv run alembic upgrade head` command.
 
+## Telephony (LiveKit SIP)
+
+Scripts to connect an Exotel or Plivo number to LiveKit SIP live in
+[`livekit-sip/`](livekit-sip). See [`../docs/telephony.md`](../docs/telephony.md) for the
+full runbook.
+
+```bash
+infra/livekit-sip/setup-telephony.sh --dry-run   # print config
+infra/livekit-sip/setup-telephony.sh             # create trunk + dispatch rule
+infra/livekit-sip/teardown-telephony.sh          # remove them
+```
+
 ## Module Dockerfiles
 
 Module Dockerfiles will be added here once deployment is wired:
