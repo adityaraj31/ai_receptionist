@@ -139,6 +139,13 @@ class AgentApiClient:
             json={"channel": channel},
         )
 
+    async def finalize_call(self, payload: dict[str, Any]) -> dict[str, Any]:
+        return await self._request(
+            "POST",
+            "/api/v1/agent/calls",
+            json=payload,
+        )
+
 
 def _error_detail(response: httpx.Response) -> tuple[str, Any]:
     try:

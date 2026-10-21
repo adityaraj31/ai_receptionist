@@ -106,6 +106,13 @@ Warm transfer needs a LiveKit **outbound** SIP trunk (`LIVEKIT_SIP_OUTBOUND_TRUN
 
 Confirmations use `send_confirmation(channel, appointment_id)` -> `POST /api/v1/agent/appointments/{id}/confirmation`. Provider adapters live in `api/app/messaging` (Meta Cloud API/Gupshup for WhatsApp, Exotel/Plivo for SMS) behind one `MessagingService`. Per-clinic switches and Hindi/English templates live in `clinic_messaging_settings` and are edited on the dashboard **Messaging** page; attempts are recorded in `message_logs`. Booking/rescheduling enqueues Arq `send_appointment_reminder` jobs at 24h and 2h before the visit. Run the worker with `cd api && uv run arq app.workers.main.WorkerSettings`. For local end-to-end testing without provider credentials, set `WHATSAPP_PROVIDER=fake` and `SMS_PROVIDER=fake`; messages are logged instead of sent. See `docs/messaging.md`.
 
+Post-call processing is wired end to end. The agent posts a finalize payload to
+`POST /api/v1/agent/calls`; Arq `process_call` persists the recording to S3, stores the
+transcript, generates a summary/outcome (LLM with heuristic fallback), and computes cost,
+then `evaluate_call` writes correctness/politeness/missed-handoff rows. Recording is
+opt-in via `RECORDING_ENABLED` and runs as a LiveKit audio-only egress. See
+`docs/post-call.md`.
+
 Calendar tools are implemented in `/agent` (`agent_tools.py` + `api_client.py`). They call
 `/api` with the `X-Service-Key` header (`AGENT_API_URL` / `AGENT_API_KEY`, falling back to
 `DEMO_AGENT_KEY`) and never write appointments directly to Postgres. At call start the agent

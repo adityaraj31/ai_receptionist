@@ -223,3 +223,9 @@ uv run pytest
   the requested pipeline requires Silero VAD; revisit this before production.
 - Calendar, FAQ, human transfer, callback, and confirmation tools are wired. Arq sends
   24h/2h reminders from the API; CRM sync is not yet.
+- At shutdown the agent submits the transcript, per-provider usage counters, and optional
+  recording metadata to `/api/v1/agent/calls`. Post-call summary/cost/evaluation jobs are
+  documented in [`../docs/post-call.md`](../docs/post-call.md).
+- Recording is opt-in: set `RECORDING_ENABLED=true` plus the S3 values. The agent starts a
+  LiveKit audio-only egress and stops/polls it at shutdown. The greeting asks for consent,
+  but the agent does not yet enforce a refusal before recording.

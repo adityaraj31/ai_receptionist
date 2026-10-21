@@ -164,6 +164,7 @@ just the JWT claims.
 | `GET` | `/api/v1/messaging-settings` | staff | Get confirmation/reminder switches and templates |
 | `PATCH` | `/api/v1/messaging-settings` | staff | Update switches and templates |
 | `POST` | `/api/v1/agent/appointments/{id}/confirmation` | agent | Send WhatsApp or SMS confirmation |
+| `POST` | `/api/v1/agent/calls` | agent | Finalize a call and enqueue post-call jobs |
 
 ## FAQ retrieval
 
@@ -192,6 +193,22 @@ Hindi/English templates live in `clinic_messaging_settings`; sent and skipped at
 to `message_logs`. Booking and rescheduling enqueue `send_appointment_reminder` jobs at
 24 hours and 2 hours before the visit. Run the worker with
 `uv run arq app.workers.main.WorkerSettings`; see [../docs/messaging.md](../docs/messaging.md).
+
+## Post-call processing
+
+When a call ends, the agent posts the transcript, usage counters, and optional egress
+recording metadata to `/api/v1/agent/calls`. The API writes `calls`, `transcripts`, and
+`call_events`, then Arq jobs copy the recording to S3, summarize the call, classify the
+outcome, compute cost, and evaluate correctness/politeness/missed handoffs. The endpoint
+is idempotent per LiveKit room. Run the same worker as reminders:
+
+```bash
+cd api
+uv run arq app.workers.main.WorkerSettings
+```
+
+Jobs degrade safely: without S3 the original recording URL is kept; without an LLM key a
+heuristic summary/outcome is used. See [../docs/post-call.md](../docs/post-call.md).
 
 ## Slot rules
 

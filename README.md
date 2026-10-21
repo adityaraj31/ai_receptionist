@@ -104,7 +104,7 @@ grouped by provider:
 - LLM, Google Calendar
 - WhatsApp/Gupshup, SMS
 - Postgres, Redis/Arq
-- S3-compatible storage
+- S3-compatible storage and optional call recording
 - Sentry/Langfuse
 - Clinic defaults
 
@@ -183,6 +183,7 @@ for required keys, browser testing, and latency log fields.
 
 ## Next steps
 
-1. Call ingestion, transcripts, evals, and dashboard analytics.
-2. Post-call jobs and CRM sync.
-3. Recordings, transcripts, summaries, and cost tracking after each call.
+1. Calls/analytics dashboard fed by `calls`, `transcripts`, `evaluations`, and
+   `call_events`.
+2. CRM/Sheets sync and outbound consent tracking.
+3. Production SIP transfer routing and approved WhatsApp reminder templates.

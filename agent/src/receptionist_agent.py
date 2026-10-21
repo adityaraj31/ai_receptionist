@@ -30,8 +30,10 @@ from livekit.plugins import openai, sarvam, silero
 
 from agent_tools import ReceptionistAgent
 from api_client import AgentApiClient
+from call_lifecycle import CallLifecycle, UsageCollector
 from clinic_repository import build_config_from_api_payload, load_clinic_config_from_db
 from prompts import ClinicConfig, load_clinic_config
+from recording import RecordingSession
 from transfer import SipWarmTransfer
 
 AGENT_DIR = Path(__file__).resolve().parents[1]
@@ -172,7 +174,10 @@ async def _resolve_clinic_config(api: AgentApiClient) -> tuple[ClinicConfig, str
     return fallback, "environment"
 
 
-def _build_session(vad: silero.VAD) -> AgentSession:
+def _build_session(
+    vad: silero.VAD,
+    lifecycle: CallLifecycle | None = None,
+) -> AgentSession:
     stt = sarvam.STT(
         language=os.getenv("SARVAM_STT_LANGUAGE", "unknown"),
         model=os.getenv("SARVAM_STT_MODEL", "saaras:v4"),
@@ -219,7 +224,26 @@ def _build_session(vad: silero.VAD) -> AgentSession:
     session.llm.on("error", lambda event: _on_provider_error("llm", event))
     session.tts.on("error", lambda event: _on_provider_error("tts", event))
     session.on("conversation_item_added", _on_conversation_item)
+    if lifecycle is not None:
+        session.stt.on("metrics_collected", lifecycle.usage.on_stt_metrics)
+        session.llm.on("metrics_collected", lifecycle.usage.on_llm_metrics)
+        session.tts.on("metrics_collected", lifecycle.usage.on_tts_metrics)
+        session.on("conversation_item_added", lifecycle.on_conversation_item)
     return session
+
+
+def _sip_numbers(ctx: JobContext) -> tuple[str | None, str | None]:
+    for participant in ctx.room.remote_participants.values():
+        attributes = getattr(participant, "attributes", None) or {}
+        caller = (
+            attributes.get("sip.phoneNumber")
+            or attributes.get("sip.fromNumber")
+            or attributes.get("sip.fromUser")
+        )
+        dialed = attributes.get("sip.trunkPhoneNumber") or attributes.get("sip.toNumber")
+        if caller or dialed:
+            return caller, dialed
+    return None, None
 
 
 @server.rtc_session(agent_name=os.getenv("LIVEKIT_AGENT_NAME", "ai-receptionist"))
@@ -230,12 +254,27 @@ async def receptionist(ctx: JobContext) -> None:
 
     api_url, api_key = _agent_api_credentials()
     api = AgentApiClient(api_url, api_key, timeout=_agent_api_timeout())
-    ctx.add_shutdown_callback(api.aclose)
     if not api_key:
         log_event("agent_api_key_missing", agent_api_url=api_url)
 
+    started_at = datetime.now(UTC)
+    from_number, to_number = _sip_numbers(ctx)
+    recording = RecordingSession(ctx.room.name, on_event=log_event)
+    lifecycle = CallLifecycle(
+        api=api,
+        room_name=ctx.room.name,
+        started_at=started_at,
+        from_number=from_number,
+        to_number=to_number,
+        language=None,
+        on_event=log_event,
+        recording=recording,
+        usage=UsageCollector(),
+    )
+    ctx.add_shutdown_callback(lifecycle.shutdown)
+
     clinic_config, config_source = await _resolve_clinic_config(api)
-    session = _build_session(ctx.proc.userdata["vad"])
+    session = _build_session(ctx.proc.userdata["vad"], lifecycle)
 
     trunk_id = (
         os.getenv("LIVEKIT_SIP_OUTBOUND_TRUNK") or os.getenv("LIVEKIT_SIP_OUTBOUND_TRUNK_ID") or ""
@@ -277,6 +316,7 @@ async def receptionist(ctx: JobContext) -> None:
         tts_language=TTS_LANGUAGE,
     )
 
+    await recording.start()
     await session.start(
         agent=ReceptionistAgent(
             clinic_config=clinic_config,

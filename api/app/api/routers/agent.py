@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 import logging
+from datetime import UTC, datetime, timedelta
 from time import perf_counter
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
 from ...db import SessionDep
-from ...models import AvailabilityRule, Doctor
+from ...models import AvailabilityRule, Call, CallEvent, Doctor, Transcript
+from ...queue import enqueue_call_processing
 from ...schemas import (
     AgentAvailabilityRead,
     AgentClinicConfigRead,
@@ -16,6 +18,8 @@ from ...schemas import (
     AgentDoctorRead,
     CallbackCreate,
     CallbackRead,
+    CallFinalizeRead,
+    CallFinalizeRequest,
     ConfirmationRead,
     ConfirmationRequest,
     FaqSearchRead,
@@ -207,4 +211,111 @@ async def send_appointment_confirmation(
         channel=payload.channel,
         appointment_id=appointment_id,
         reason=None if sent else (log.error or log.status),
+    )
+
+
+@router.post(
+    "/calls",
+    response_model=CallFinalizeRead,
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Finalize a completed call",
+    description=(
+        "Service-key endpoint used by the voice agent when a call ends. Stores the "
+        "transcript and usage, then enqueues recording storage, summary, cost, and "
+        "evaluation jobs. Safe to retry for the same LiveKit room."
+    ),
+)
+async def finalize_call(
+    payload: CallFinalizeRequest,
+    principal: CurrentService,
+    session: SessionDep,
+) -> CallFinalizeRead:
+    call = await session.scalar(
+        select(Call).where(
+            Call.clinic_id == principal.clinic_id,
+            Call.livekit_room_name == payload.room_name,
+        )
+    )
+
+    if call is not None and call.post_call_status in {"processing", "completed"}:
+        return CallFinalizeRead(
+            call_id=call.id,
+            queued=False,
+            post_call_status=call.post_call_status,
+        )
+
+    if call is None:
+        call = Call(
+            clinic_id=principal.clinic_id,
+            livekit_room_name=payload.room_name,
+        )
+        session.add(call)
+        await session.flush()
+    else:
+        await session.execute(delete(Transcript).where(Transcript.call_id == call.id))
+
+    duration_seconds = max(0, int((payload.ended_at - payload.started_at).total_seconds()))
+    call.direction = "inbound"
+    call.status = "completed"
+    call.from_number = payload.from_number
+    call.to_number = payload.to_number
+    call.language = payload.language
+    call.started_at = payload.started_at
+    call.ended_at = payload.ended_at
+    call.duration_seconds = duration_seconds
+    call.recording_url = payload.recording.url if payload.recording else None
+    call.recording_meta = (
+        payload.recording.model_dump(exclude_none=True) if payload.recording else {}
+    )
+    call.usage_metrics = payload.usage.model_dump()
+    call.post_call_status = "pending"
+    call.post_call_error = ""
+    call.evaluation_status = "pending"
+    call.evaluation_error = ""
+
+    base_time = datetime.now(UTC)
+    session.add_all(
+        [
+            Transcript(
+                call_id=call.id,
+                role=turn.role,
+                text=turn.text,
+                language=turn.language or payload.language,
+                created_at=base_time + timedelta(microseconds=index),
+            )
+            for index, turn in enumerate(payload.transcript)
+        ]
+    )
+    session.add(
+        CallEvent(
+            call_id=call.id,
+            event="call_finalized",
+            payload={
+                "room_name": payload.room_name,
+                "duration_seconds": duration_seconds,
+                "turns": len(payload.transcript),
+                "has_recording": payload.recording is not None,
+                "usage": payload.usage.model_dump(),
+            },
+        )
+    )
+    await session.commit()
+
+    queued = await enqueue_call_processing(str(call.id))
+    if not queued:
+        call.post_call_status = "failed"
+        call.post_call_error = "post_call_queue_unavailable"
+        session.add(
+            CallEvent(
+                call_id=call.id,
+                event="post_call_enqueue_failed",
+                payload={"reason": "post_call_queue_unavailable"},
+            )
+        )
+        await session.commit()
+
+    return CallFinalizeRead(
+        call_id=call.id,
+        queued=queued,
+        post_call_status=call.post_call_status,
     )

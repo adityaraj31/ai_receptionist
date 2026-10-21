@@ -16,6 +16,13 @@ from .availability import (
     AvailabilityRuleRead,
     AvailabilityRuleUpdate,
 )
+from .call import (
+    CallFinalizeRead,
+    CallFinalizeRequest,
+    CallUsage,
+    RecordingMeta,
+    TranscriptTurn,
+)
 from .callback import CallbackCreate, CallbackRead, CallbackStatus, CallbackUpdate
 from .clinic import ClinicRead, ClinicUpdate
 from .common import Message, ORMModel
@@ -40,6 +47,9 @@ from .staff import (
 from .time_off import TimeOffCreate, TimeOffRead, TimeOffUpdate
 
 __all__ = [
+    "CallFinalizeRead",
+    "CallFinalizeRequest",
+    "CallUsage",
     "AgentAvailabilityRead",
     "AgentClinicConfigRead",
     "AgentClinicRead",
@@ -58,6 +68,8 @@ __all__ = [
     "ClinicUpdate",
     "ConfirmationRead",
     "ConfirmationRequest",
+    "TranscriptTurn",
+    "RecordingMeta",
     "DoctorCreate",
     "DoctorRead",
     "DoctorUpdate",

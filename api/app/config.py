@@ -27,7 +27,33 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
     arq_queue_name: str = "post_call"
     reminder_jobs_enabled: bool = True
+    post_call_jobs_enabled: bool = True
     messaging_timeout_seconds: float = 10.0
+
+    llm_api_key: str = ""
+    llm_model: str = "gpt-4.1-mini"
+    llm_base_url: str = ""
+    llm_timeout_seconds: float = 30.0
+    call_analysis_max_tokens: int = 800
+    call_transcript_max_chars: int = 12000
+
+    stt_cost_per_minute: float = 0.0
+    llm_input_cost_per_1m_tokens: float = 0.0
+    llm_output_cost_per_1m_tokens: float = 0.0
+    tts_cost_per_1m_characters: float = 0.0
+    telephony_cost_per_minute: float = 0.0
+    cost_currency: str = "INR"
+
+    s3_endpoint_url: str = ""
+    s3_region: str = "ap-south-1"
+    s3_bucket: str = ""
+    s3_access_key_id: str = ""
+    s3_secret_access_key: str = ""
+    s3_public_base_url: str = ""
+    s3_force_path_style: bool = False
+    s3_timeout_seconds: float = 30.0
+    recording_prefix: str = "recordings"
+    recording_max_bytes: int = 50 * 1024 * 1024
 
     whatsapp_provider: str = "none"
     whatsapp_api_url: str = "https://graph.facebook.com/v21.0"

@@ -15,7 +15,9 @@ _pool: ArqRedis | None = None
 
 async def init_queue() -> None:
     global _pool
-    if not settings.reminder_jobs_enabled or _pool is not None:
+    if not (settings.reminder_jobs_enabled or settings.post_call_jobs_enabled):
+        return
+    if _pool is not None:
         return
     try:
         _pool = await create_pool(
@@ -23,7 +25,7 @@ async def init_queue() -> None:
             default_queue_name=settings.arq_queue_name,
         )
     except Exception:
-        logger.warning("Redis unavailable; reminder jobs will not be enqueued", exc_info=True)
+        logger.warning("Redis unavailable; queued jobs will not be enqueued", exc_info=True)
 
 
 async def close_queue() -> None:
@@ -35,6 +37,34 @@ async def close_queue() -> None:
 
 def get_queue() -> ArqRedis | None:
     return _pool
+
+
+async def enqueue_call_processing(call_id: str) -> bool:
+    if not settings.post_call_jobs_enabled:
+        return False
+    pool = get_queue()
+    if pool is None:
+        return False
+    try:
+        await pool.enqueue_job("process_call", call_id)
+    except Exception:
+        logger.warning("Could not enqueue post-call job for %s", call_id, exc_info=True)
+        return False
+    return True
+
+
+async def enqueue_call_evaluation(call_id: str) -> bool:
+    if not settings.post_call_jobs_enabled:
+        return False
+    pool = get_queue()
+    if pool is None:
+        return False
+    try:
+        await pool.enqueue_job("evaluate_call", call_id)
+    except Exception:
+        logger.warning("Could not enqueue evaluation job for %s", call_id, exc_info=True)
+        return False
+    return True
 
 
 async def enqueue_reminder(

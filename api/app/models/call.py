@@ -5,7 +5,16 @@ from datetime import datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, ForeignKey, Integer, Numeric, Text, Uuid
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Integer,
+    Numeric,
+    Text,
+    UniqueConstraint,
+    Uuid,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -17,6 +26,21 @@ if TYPE_CHECKING:
 
 class Call(Base, TimestampMixin):
     __tablename__ = "calls"
+    __table_args__ = (
+        UniqueConstraint("clinic_id", "livekit_room_name", name="uq_calls_clinic_room"),
+        CheckConstraint(
+            "outcome IS NULL OR outcome IN ('booked', 'enquiry', 'transferred', 'dropped')",
+            name="ck_calls_outcome",
+        ),
+        CheckConstraint(
+            "post_call_status IN ('pending', 'processing', 'completed', 'failed')",
+            name="ck_calls_post_call_status",
+        ),
+        CheckConstraint(
+            "evaluation_status IN ('pending', 'processing', 'completed', 'failed', 'skipped')",
+            name="ck_calls_evaluation_status",
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     clinic_id: Mapped[uuid.UUID] = mapped_column(
@@ -30,11 +54,21 @@ class Call(Base, TimestampMixin):
     direction: Mapped[str] = mapped_column(Text, nullable=False, default="inbound")
     status: Mapped[str] = mapped_column(Text, nullable=False, default="completed")
     language: Mapped[str | None] = mapped_column(Text)
+    livekit_room_name: Mapped[str | None] = mapped_column(Text)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     duration_seconds: Mapped[int | None] = mapped_column(Integer)
     recording_url: Mapped[str | None] = mapped_column(Text)
+    recording_meta: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    usage_metrics: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    summary: Mapped[str | None] = mapped_column(Text)
+    outcome: Mapped[str | None] = mapped_column(Text)
     cost: Mapped[Decimal | None] = mapped_column(Numeric(10, 4))
+    cost_breakdown: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    post_call_status: Mapped[str] = mapped_column(Text, nullable=False, default="pending")
+    post_call_error: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    evaluation_status: Mapped[str] = mapped_column(Text, nullable=False, default="pending")
+    evaluation_error: Mapped[str] = mapped_column(Text, nullable=False, default="")
 
     clinic: Mapped[Clinic] = relationship(back_populates="calls")
     transcripts: Mapped[list[Transcript]] = relationship(
