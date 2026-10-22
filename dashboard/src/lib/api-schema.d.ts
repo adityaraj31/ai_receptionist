@@ -135,6 +135,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/agent/calls": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Finalize a completed call
+         * @description Service-key endpoint used by the voice agent when a call ends. Stores the transcript and usage, then enqueues recording storage, summary, cost, and evaluation jobs. Safe to retry for the same LiveKit room.
+         */
+        post: operations["finalize_call_api_v1_agent_calls_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/invitations/{token}": {
         parameters: {
             query?: never;
@@ -539,6 +559,66 @@ export interface paths {
         patch: operations["update_settings_api_v1_messaging_settings_patch"];
         trace?: never;
     };
+    "/api/v1/analytics/calls": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Call analytics for the clinic
+         * @description Returns call volume, booking conversion, latency, language split, cost per minute, transfer rate, and recent calls for a rolling period.
+         */
+        get: operations["call_analytics_api_v1_analytics_calls_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/calls/{call_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Call detail with transcript and evaluations
+         * @description Clinic-scoped call detail. Phone numbers are masked.
+         */
+        get: operations["get_call_api_v1_calls__call_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/calls/{call_id}/recording": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stream or redirect to a call recording
+         * @description Authenticated recording playback. Redirects to a short-lived S3 URL or the existing public recording URL.
+         */
+        get: operations["get_call_recording_api_v1_calls__call_id__recording_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -772,6 +852,268 @@ export interface components {
             slot_minutes?: number | null;
             /** Is Active */
             is_active?: boolean | null;
+        };
+        /** CallAnalyticsDay */
+        CallAnalyticsDay: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Calls */
+            calls: number;
+            /** Booked */
+            booked: number;
+            /** Transferred */
+            transferred: number;
+        };
+        /** CallAnalyticsRead */
+        CallAnalyticsRead: {
+            /** Days */
+            days: number;
+            /**
+             * Period Start
+             * Format: date
+             */
+            period_start: string;
+            /**
+             * Period End
+             * Format: date
+             */
+            period_end: string;
+            totals: components["schemas"]["CallAnalyticsTotals"];
+            /** Calls Per Day */
+            calls_per_day: components["schemas"]["CallAnalyticsDay"][];
+            /** Languages */
+            languages: components["schemas"]["CallLanguageSplit"][];
+            /** Outcomes */
+            outcomes: components["schemas"]["CallOutcomeSplit"][];
+            /** Recent Calls */
+            recent_calls: components["schemas"]["CallListItem"][];
+        };
+        /** CallAnalyticsTotals */
+        CallAnalyticsTotals: {
+            /** Calls */
+            calls: number;
+            /** Booked */
+            booked: number;
+            /** Transferred */
+            transferred: number;
+            /** Booking Conversion */
+            booking_conversion: number;
+            /** Transfer Rate */
+            transfer_rate: number;
+            /** Average Latency Ms */
+            average_latency_ms: number | null;
+            /** Cost Per Minute */
+            cost_per_minute: number | null;
+            /** Total Cost */
+            total_cost: number;
+            /** Total Minutes */
+            total_minutes: number;
+            /** Average Duration Seconds */
+            average_duration_seconds: number | null;
+        };
+        /** CallDetailRead */
+        CallDetailRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Started At */
+            started_at: string | null;
+            /** From Number */
+            from_number: string | null;
+            /** Language */
+            language: string | null;
+            /** Duration Seconds */
+            duration_seconds: number | null;
+            /** Outcome */
+            outcome: string | null;
+            /** Cost */
+            cost: number | null;
+            /** Summary */
+            summary: string | null;
+            /** Recording Available */
+            recording_available: boolean;
+            /** Post Call Status */
+            post_call_status: string;
+            /** Evaluation Status */
+            evaluation_status: string;
+            /** To Number */
+            to_number: string | null;
+            /** Ended At */
+            ended_at: string | null;
+            /** Usage Metrics */
+            usage_metrics: {
+                [key: string]: unknown;
+            };
+            /** Cost Breakdown */
+            cost_breakdown: {
+                [key: string]: unknown;
+            };
+            /** Post Call Error */
+            post_call_error: string;
+            /** Evaluation Error */
+            evaluation_error: string;
+            /** Transcript */
+            transcript: components["schemas"]["CallTranscriptRead"][];
+            /** Evaluations */
+            evaluations: components["schemas"]["CallEvaluationRead"][];
+        };
+        /** CallEvaluationRead */
+        CallEvaluationRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Metric */
+            metric: string;
+            /** Score */
+            score: number | null;
+            /** Details */
+            details: {
+                [key: string]: unknown;
+            };
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** CallFinalizeRead */
+        CallFinalizeRead: {
+            /**
+             * Call Id
+             * Format: uuid
+             */
+            call_id: string;
+            /** Queued */
+            queued: boolean;
+            /** Post Call Status */
+            post_call_status: string;
+        };
+        /** CallFinalizeRequest */
+        CallFinalizeRequest: {
+            /** Room Name */
+            room_name: string;
+            /**
+             * Started At
+             * Format: date-time
+             */
+            started_at: string;
+            /**
+             * Ended At
+             * Format: date-time
+             */
+            ended_at: string;
+            /** From Number */
+            from_number?: string | null;
+            /** To Number */
+            to_number?: string | null;
+            /** Language */
+            language?: string | null;
+            /** Transcript */
+            transcript?: components["schemas"]["TranscriptTurn"][];
+            recording?: components["schemas"]["RecordingMeta"] | null;
+            usage?: components["schemas"]["CallUsage"];
+        };
+        /** CallLanguageSplit */
+        CallLanguageSplit: {
+            /** Language */
+            language: string;
+            /** Calls */
+            calls: number;
+            /** Share */
+            share: number;
+        };
+        /** CallListItem */
+        CallListItem: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Started At */
+            started_at: string | null;
+            /** From Number */
+            from_number: string | null;
+            /** Language */
+            language: string | null;
+            /** Duration Seconds */
+            duration_seconds: number | null;
+            /** Outcome */
+            outcome: string | null;
+            /** Cost */
+            cost: number | null;
+            /** Summary */
+            summary: string | null;
+            /** Recording Available */
+            recording_available: boolean;
+            /** Post Call Status */
+            post_call_status: string;
+            /** Evaluation Status */
+            evaluation_status: string;
+        };
+        /** CallOutcomeSplit */
+        CallOutcomeSplit: {
+            /** Outcome */
+            outcome: string;
+            /** Calls */
+            calls: number;
+            /** Share */
+            share: number;
+        };
+        /** CallTranscriptRead */
+        CallTranscriptRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Role */
+            role: string;
+            /** Text */
+            text: string;
+            /** Language */
+            language: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** CallUsage */
+        CallUsage: {
+            /**
+             * Stt Audio Seconds
+             * @default 0
+             */
+            stt_audio_seconds: number;
+            /**
+             * Llm Prompt Tokens
+             * @default 0
+             */
+            llm_prompt_tokens: number;
+            /**
+             * Llm Completion Tokens
+             * @default 0
+             */
+            llm_completion_tokens: number;
+            /**
+             * Tts Characters
+             * @default 0
+             */
+            tts_characters: number;
+            /** Average Latency Ms */
+            average_latency_ms?: number | null;
+            /**
+             * Latency Samples
+             * @default 0
+             */
+            latency_samples: number;
         };
         /** CallbackCreate */
         CallbackCreate: {
@@ -1157,6 +1499,21 @@ export interface components {
             /** Reminder 2H Template Hi */
             reminder_2h_template_hi?: string | null;
         };
+        /** RecordingMeta */
+        RecordingMeta: {
+            /** Url */
+            url?: string | null;
+            /** Bucket */
+            bucket?: string | null;
+            /** Key */
+            key?: string | null;
+            /** Egress Id */
+            egress_id?: string | null;
+            /** Size Bytes */
+            size_bytes?: number | null;
+            /** Duration Seconds */
+            duration_seconds?: number | null;
+        };
         /** StaffInvitationCreate */
         StaffInvitationCreate: {
             /**
@@ -1326,6 +1683,18 @@ export interface components {
             /** Expires In */
             expires_in: number;
             staff: components["schemas"]["StaffRead"];
+        };
+        /** TranscriptTurn */
+        TranscriptTurn: {
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "user" | "assistant";
+            /** Text */
+            text: string;
+            /** Language */
+            language?: string | null;
         };
         /** ValidationError */
         ValidationError: {
@@ -1554,6 +1923,39 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    finalize_call_api_v1_agent_calls_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CallFinalizeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CallFinalizeRead"];
+                };
             };
             /** @description Validation Error */
             422: {
@@ -2917,6 +3319,120 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+        };
+    };
+    call_analytics_api_v1_analytics_calls_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CallAnalyticsRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_call_api_v1_calls__call_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                call_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CallDetailRead"];
+                };
+            };
+            /** @description Call not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_call_recording_api_v1_calls__call_id__recording_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                call_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Recording not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Recording storage is not configured */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

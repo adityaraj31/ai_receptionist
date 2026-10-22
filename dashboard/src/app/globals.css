@@ -1,16 +1,234 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   color-scheme: light;
+}
+
+.dark {
+  color-scheme: dark;
 }
 
 body {
   font-family:
     ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
+  transition:
+    background-color 180ms ease,
+    color 180ms ease;
 }
 
 input,
 select {
   color-scheme: light;
+}
+
+.dark input,
+.dark select,
+.dark textarea {
+  color-scheme: dark;
+}
+
+/*
+ * The dashboard was built with light surface utilities. These scoped
+ * overrides turn those same surfaces dark without duplicating every page.
+ */
+.dark body {
+  background-color: #020617;
+  color: #e2e8f0;
+}
+
+.dark .bg-white {
+  background-color: #0f172a;
+}
+
+.dark .bg-white\/80 {
+  background-color: rgb(15 23 42 / 0.8);
+}
+
+.dark .bg-white\/90 {
+  background-color: rgb(15 23 42 / 0.9);
+}
+
+.dark .bg-slate-50 {
+  background-color: #020617;
+}
+
+.dark .bg-slate-50\/90 {
+  background-color: rgb(2 6 23 / 0.9);
+}
+
+.dark .bg-slate-100 {
+  background-color: #1e293b;
+}
+
+.dark .bg-slate-100\/80 {
+  background-color: rgb(30 41 59 / 0.8);
+}
+
+.dark .bg-slate-200 {
+  background-color: #334155;
+}
+
+.dark .bg-teal-50 {
+  background-color: rgb(4 47 46 / 0.55);
+}
+
+.dark .bg-teal-100 {
+  background-color: rgb(19 78 74 / 0.65);
+}
+
+.dark .bg-emerald-50 {
+  background-color: rgb(2 44 34 / 0.55);
+}
+
+.dark .bg-rose-50 {
+  background-color: rgb(76 5 25 / 0.45);
+}
+
+.dark .bg-amber-50 {
+  background-color: rgb(69 26 3 / 0.45);
+}
+
+.dark .bg-sky-50 {
+  background-color: rgb(8 47 73 / 0.5);
+}
+
+.dark .bg-indigo-50 {
+  background-color: rgb(30 27 75 / 0.5);
+}
+
+.dark .bg-violet-50 {
+  background-color: rgb(46 16 101 / 0.45);
+}
+
+.dark .text-slate-950 {
+  color: #f8fafc;
+}
+
+.dark .text-slate-900 {
+  color: #f1f5f9;
+}
+
+.dark .text-slate-800 {
+  color: #e2e8f0;
+}
+
+.dark .text-slate-700 {
+  color: #cbd5e1;
+}
+
+.dark .text-slate-600 {
+  color: #94a3b8;
+}
+
+.dark .text-slate-500 {
+  color: #94a3b8;
+}
+
+.dark .text-slate-400 {
+  color: #94a3b8;
+}
+
+.dark .text-teal-950 {
+  color: #ccfbf1;
+}
+
+.dark .text-teal-900\/70 {
+  color: rgb(153 246 228 / 0.72);
+}
+
+.dark .text-teal-800 {
+  color: #99f6e4;
+}
+
+.dark .text-teal-700 {
+  color: #5eead4;
+}
+
+.dark .text-emerald-800 {
+  color: #a7f3d0;
+}
+
+.dark .text-rose-800 {
+  color: #fecdd3;
+}
+
+.dark .text-amber-800 {
+  color: #fde68a;
+}
+
+.dark .text-sky-700 {
+  color: #7dd3fc;
+}
+
+.dark .text-indigo-700 {
+  color: #a5b4fc;
+}
+
+.dark .text-violet-700 {
+  color: #c4b5fd;
+}
+
+.dark .border-slate-100 {
+  border-color: #1e293b;
+}
+
+.dark .border-slate-200 {
+  border-color: #1e293b;
+}
+
+.dark .border-slate-300 {
+  border-color: #334155;
+}
+
+.dark .border-teal-200 {
+  border-color: #115e59;
+}
+
+.dark .divide-slate-200 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #1e293b;
+}
+
+.dark .ring-slate-200 {
+  --tw-ring-color: #1e293b;
+}
+
+.dark .hover\:bg-slate-50:hover {
+  background-color: #1e293b;
+}
+
+.dark .hover\:bg-slate-100:hover {
+  background-color: #1e293b;
+}
+
+.dark .hover\:bg-slate-200:hover {
+  background-color: #334155;
+}
+
+.dark .hover\:bg-teal-100:hover {
+  background-color: rgb(19 78 74 / 0.65);
+}
+
+.dark input,
+.dark select,
+.dark textarea {
+  background-color: #0f172a;
+  border-color: #334155;
+  color: #f1f5f9;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #64748b;
+}
+
+.dark option {
+  background-color: #0f172a;
+  color: #f1f5f9;
+}
+
+.dark .disabled\:bg-slate-100:disabled {
+  background-color: #1e293b;
 }

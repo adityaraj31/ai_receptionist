@@ -144,3 +144,31 @@ export function dateInTimeZone(iso: string, timeZone: string): string {
 
   return `${values.year}-${values.month}-${values.day}`;
 }
+
+export function nextDateForWeekday(
+  weekday: number,
+  timeZone = TIME_ZONE,
+): string {
+  const today = todayInTimeZone(timeZone);
+  const date = new Date(`${today}T12:00:00Z`);
+  const currentWeekday = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() + ((weekday - currentWeekday + 7) % 7));
+  return date.toISOString().slice(0, 10);
+}
+
+export function formatNextWeekday(
+  weekday: number,
+  timeZone = TIME_ZONE,
+): string {
+  const nextDate = nextDateForWeekday(weekday, timeZone);
+  const today = todayInTimeZone(timeZone);
+  const label = new Intl.DateTimeFormat("en-IN", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    timeZone: "UTC",
+  }).format(new Date(`${nextDate}T12:00:00Z`));
+
+  if (nextDate === today) return `Today · ${label}`;
+  return label;
+}

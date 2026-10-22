@@ -8,6 +8,8 @@ import {
   type AvailabilityRule,
   type AvailabilityRuleInput,
   type AvailabilityRuleUpdate,
+  type CallAnalytics,
+  type CallDetail,
   type Callback,
   type CallbackStatus,
   type CallbackUpdate,
@@ -97,6 +99,41 @@ export const api = {
   me: () => unwrap<Staff>(client.GET("/api/v1/auth/me")),
 
   getClinic: () => unwrap<Clinic>(client.GET("/api/v1/clinic")),
+
+  getCallAnalytics: (days = 30) =>
+    unwrap<CallAnalytics>(
+      client.GET("/api/v1/analytics/calls", {
+        params: { query: { days } },
+      }),
+    ),
+
+  getCall: (callId: string) =>
+    unwrap<CallDetail>(
+      client.GET("/api/v1/calls/{call_id}", {
+        params: { path: { call_id: callId } },
+      }),
+    ),
+
+  getCallRecording: async (callId: string): Promise<Blob> => {
+    const token = getToken();
+    const response = await fetch(
+      `${API_URL}/api/v1/calls/${callId}/recording`,
+      {
+        cache: "no-store",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      },
+    );
+    if (!response.ok) {
+      let error: unknown = null;
+      try {
+        error = await response.json();
+      } catch {
+        error = null;
+      }
+      throw parseApiError(response.status, error);
+    }
+    return response.blob();
+  },
 
   listStaff: () => unwrap<Staff[]>(client.GET("/api/v1/staff")),
 

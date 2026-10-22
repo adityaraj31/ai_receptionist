@@ -110,8 +110,37 @@ Post-call processing is wired end to end. The agent posts a finalize payload to
 `POST /api/v1/agent/calls`; Arq `process_call` persists the recording to S3, stores the
 transcript, generates a summary/outcome (LLM with heuristic fallback), and computes cost,
 then `evaluate_call` writes correctness/politeness/missed-handoff rows. Recording is
-opt-in via `RECORDING_ENABLED` and runs as a LiveKit audio-only egress. See
-`docs/post-call.md`.
+opt-in via `RECORDING_ENABLED` plus caller consent and runs as a LiveKit audio-only
+egress. The API and worker use the ECS task role for S3; only the agent receives the
+static egress access key. See `docs/post-call.md`.
+
+Call analytics and call detail are staff-JWT, clinic-scoped APIs:
+`GET /api/v1/analytics/calls?days=30` aggregates calls/day, booking conversion,
+transfer rate, language/outcome splits, cost/minute, and average turn latency;
+`GET /api/v1/calls/{id}` returns a masked summary, transcript, evaluations, usage,
+and cost; `GET /api/v1/calls/{id}/recording` redirects to a short-lived S3 URL
+(`RECORDING_URL_TTL_SECONDS`). The agent records average `e2e_latency` from
+conversation-item metrics into `calls.usage_metrics`, so no extra table is needed.
+The dashboard **Analytics** page and `/calls/[id]` call detail consume these APIs;
+charts are lightweight SVG/CSS, not a charting dependency.
+
+Production deployment is ECS Fargate in `ap-south-1` (`infra/aws/terraform`), behind an
+ALB, with RDS Postgres 16 + pgvector, ElastiCache Redis (TLS), and private S3 recordings.
+Dockerfiles live in `infra/docker`; `infra/aws/deploy.sh` builds/pushes `linux/amd64`
+images. Do not deploy through ad-hoc host edits; changes go through Terraform.
+
+The agent exposes `GET :8081/worker` (`active_jobs`, `worker_load`) and optional Prometheus
+metrics. In production, set `AGENT_HTTP_PORT=8081` and `AGENT_MAX_ACTIVE_CALLS` so worker
+admission control follows active calls rather than the default CPU load. The sidecar
+`infra/aws/agent-metrics` publishes `ActiveCalls` via CloudWatch EMF, and ECS target
+tracking keeps average active calls per task at `agent_target_calls_per_task`; keep
+`AGENT_MAX_ACTIVE_CALLS` above that target. Load test with
+`agent/scripts/load_test_calls.py`; see `docs/deployment.md`.
+
+Recording is opt-in: the greeting asks consent and the `set_recording_consent` tool starts
+egress only after a clear yes. Keep that gate when changing prompts or tools. RDS
+migration and clinic hand-off are documented in `docs/rds-migration.md` and
+`docs/onboarding.md`.
 
 Calendar tools are implemented in `/agent` (`agent_tools.py` + `api_client.py`). They call
 `/api` with the `X-Service-Key` header (`AGENT_API_URL` / `AGENT_API_KEY`, falling back to
@@ -146,4 +175,5 @@ Free slots = weekly availability minus time off minus non-cancelled appointments
 - Week 1: Phone -> STT -> LLM -> TTS working, calendar booking, Hindi + English.
 - Week 2: FAQ RAG (done), human transfer (done), WhatsApp/SMS confirmations and
   24h/2h reminders (done: provider adapters, clinic templates, Arq jobs), CRM sync.
-- Week 3: Recording, transcripts, evals, analytics dashboard, concurrency tests, demo and pricing.
+- Week 3: Recording, transcripts, evals, analytics dashboard (done), concurrency tests,
+  production AWS deploy, demo and pricing.

@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/components/auth-provider";
 import {
   CalendarIcon,
+  ChartIcon,
   ClockIcon,
   FaqIcon,
   LogoutIcon,
@@ -18,6 +19,7 @@ import {
   UsersIcon,
 } from "@/components/icons";
 import { cn } from "@/lib/cn";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { api } from "@/lib/api-client";
 import { isSetupSkipped } from "@/lib/session";
 import { Spinner } from "@/components/ui";
@@ -29,6 +31,7 @@ const navigation: {
   adminOnly?: boolean;
 }[] = [
   { href: "/appointments", label: "Appointments", icon: CalendarIcon },
+  { href: "/analytics", label: "Analytics", icon: ChartIcon },
   { href: "/callbacks", label: "Callbacks", icon: PhoneIcon },
   { href: "/doctors", label: "Doctors", icon: StethoscopeIcon },
   { href: "/availability", label: "Availability", icon: ClockIcon },
@@ -69,7 +72,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       .catch(() => {
         setupChecked.current = false;
       });
-  }, [staff, router]);
+  }, [staff, pathname, router]);
 
   if (loading || !staff) {
     return (
@@ -196,6 +199,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <span className="hidden rounded-full bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-600 sm:inline">
               {staff.full_name}
             </span>
+            <ThemeToggle />
           </div>
         </header>
 

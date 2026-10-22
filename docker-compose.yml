@@ -37,38 +37,93 @@ services:
       retries: 10
       start_period: 5s
 
-  # Application services are added once the modules exist.
-  #
-  # api:
-  #   build:
-  #     context: ./api
-  #     dockerfile: ../infra/docker/api.Dockerfile
-  #   env_file: .env
-  #   depends_on:
-  #     db:
-  #       condition: service_healthy
-  #     redis:
-  #       condition: service_healthy
-  #   ports:
-  #     - "8000:8000"
-  #
-  # agent:
-  #   build:
-  #     context: ./agent
-  #     dockerfile: ../infra/docker/agent.Dockerfile
-  #   env_file: .env
-  #   depends_on:
-  #     redis:
-  #       condition: service_healthy
-  #
-  # dashboard:
-  #   build:
-  #     context: ./dashboard
-  #     dockerfile: ../infra/docker/dashboard.Dockerfile
-  #   env_file: .env
-  #   ports:
-  #     - "3000:3000"
+  api:
+    profiles: ["app"]
+    build:
+      context: ./api
+      dockerfile: ../infra/docker/api.Dockerfile
+    container_name: ai-receptionist-api
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-receptionist}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-receptionist}
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    volumes:
+      - fastembed_cache:/app/.cache/fastembed
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+
+  arq:
+    profiles: ["app"]
+    build:
+      context: ./api
+      dockerfile: ../infra/docker/api.Dockerfile
+    container_name: ai-receptionist-arq
+    restart: unless-stopped
+    command: ["arq", "app.workers.main.WorkerSettings"]
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-receptionist}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-receptionist}
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  agent:
+    profiles: ["app"]
+    build:
+      context: ./agent
+      dockerfile: ../infra/docker/agent.Dockerfile
+    container_name: ai-receptionist-agent
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      AGENT_API_URL: http://api:8000
+      AGENT_HTTP_PORT: 8081
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-receptionist}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-receptionist}
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "8081:8081"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8081/', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+  dashboard:
+    profiles: ["app"]
+    build:
+      context: ./dashboard
+      dockerfile: ../infra/docker/dashboard.Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+    container_name: ai-receptionist-dashboard
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
 
 volumes:
   postgres_data:
   redis_data:
+  fastembed_cache:

@@ -21,6 +21,8 @@ class UsageCollector:
     llm_prompt_tokens: int = 0
     llm_completion_tokens: int = 0
     tts_characters: int = 0
+    latency_total_ms: float = 0.0
+    latency_samples: int = 0
 
     def on_stt_metrics(self, metrics: Any) -> None:
         self.stt_audio_seconds += float(getattr(metrics, "audio_duration", 0) or 0)
@@ -38,6 +40,12 @@ class UsageCollector:
             "llm_prompt_tokens": self.llm_prompt_tokens,
             "llm_completion_tokens": self.llm_completion_tokens,
             "tts_characters": self.tts_characters,
+            "average_latency_ms": (
+                round(self.latency_total_ms / self.latency_samples, 1)
+                if self.latency_samples
+                else None
+            ),
+            "latency_samples": self.latency_samples,
         }
 
 
@@ -62,6 +70,15 @@ class CallLifecycle:
         if role not in {"user", "assistant"} or len(self.transcript) >= 2000:
             return
         text = str(getattr(item, "text_content", "") or "").strip()
+        if role == "assistant":
+            metrics = getattr(item, "metrics", None) or {}
+            try:
+                e2e_seconds = float(metrics.get("e2e_latency") or 0)
+            except (TypeError, ValueError):
+                e2e_seconds = 0.0
+            if e2e_seconds > 0:
+                self.usage.latency_total_ms += e2e_seconds * 1000
+                self.usage.latency_samples += 1
         if not text:
             return
         self.transcript.append(

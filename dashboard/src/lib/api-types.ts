@@ -1,6 +1,15 @@
 import type { components } from "./api-schema";
 
 export type Staff = components["schemas"]["StaffRead"];
+export type CallAnalytics = components["schemas"]["CallAnalyticsRead"];
+export type CallAnalyticsDay = components["schemas"]["CallAnalyticsDay"];
+export type CallAnalyticsTotals = components["schemas"]["CallAnalyticsTotals"];
+export type CallLanguageSplit = components["schemas"]["CallLanguageSplit"];
+export type CallListItem = components["schemas"]["CallListItem"];
+export type CallOutcomeSplit = components["schemas"]["CallOutcomeSplit"];
+export type CallDetail = components["schemas"]["CallDetailRead"];
+export type CallTranscript = components["schemas"]["CallTranscriptRead"];
+export type CallEvaluation = components["schemas"]["CallEvaluationRead"];
 export type Callback = components["schemas"]["CallbackRead"];
 export type CallbackInput = components["schemas"]["CallbackCreate"];
 export type CallbackStatus = Callback["status"];

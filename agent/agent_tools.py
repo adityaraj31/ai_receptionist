@@ -44,11 +44,30 @@ class ReceptionistAgent(Agent):
         clinic_config: ClinicConfig,
         api: Any,
         transfer: TransferService | None = None,
+        recording: Any = None,
     ) -> None:
         self._clinic = clinic_config
         self._api = api
         self._transfer = transfer
+        self._recording = recording
         super().__init__(instructions=build_system_prompt(clinic_config))
+
+    @llm.function_tool
+    async def set_recording_consent(self, consent: bool) -> dict[str, Any]:
+        """Record whether the caller consents to this call being recorded.
+
+        Call with consent=true only after the caller clearly agrees. Call with
+        consent=false if they decline or the answer is unclear. Never claim the
+        call is recorded unless this tool returns recording=true.
+
+        Args:
+            consent: True if the caller clearly agreed to recording.
+        """
+        if not consent or self._recording is None:
+            return {"ok": True, "recording": False}
+
+        started = await self._recording.start()
+        return {"ok": True, "recording": bool(started)}
 
     @llm.function_tool
     async def search_faq(self, question: str) -> dict[str, Any]:

@@ -28,6 +28,7 @@ import type { AvailabilityRule, TimeOff } from "@/lib/api-types";
 import { getErrorMessage } from "@/lib/errors";
 import {
   formatDateTime,
+  formatNextWeekday,
   formatTimeValue,
   formatWeekday,
 } from "@/lib/format";
@@ -205,7 +206,8 @@ export default function AvailabilityPage() {
                       Weekly working hours
                     </h2>
                     <p className="mt-0.5 text-xs text-slate-500">
-                      Free slots are generated from these windows.
+                      These windows repeat weekly. Each date shows the next
+                      occurrence in {timeZone}.
                     </p>
                   </div>
                   <Button size="sm" onClick={openAddRule} disabled={!doctorId}>
@@ -233,9 +235,14 @@ export default function AvailabilityPage() {
                         className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
                       >
                         <div>
-                          <p className="text-sm font-semibold text-slate-900">
-                            {formatWeekday(rule.weekday)}
-                          </p>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-sm font-semibold text-slate-900">
+                              {formatWeekday(rule.weekday)}
+                            </p>
+                            <span className="rounded-full bg-teal-50 px-2.5 py-1 text-[11px] font-semibold text-teal-700 ring-1 ring-inset ring-teal-600/15">
+                              Next: {formatNextWeekday(rule.weekday, timeZone)}
+                            </span>
+                          </div>
                           <p className="mt-1 text-sm text-slate-500">
                             {formatTimeValue(rule.start_time)} –{" "}
                             {formatTimeValue(rule.end_time)}
@@ -360,6 +367,7 @@ export default function AvailabilityPage() {
             doctorId={doctorId}
             rule={editingRule}
             onCancel={() => setRuleOpen(false)}
+            timeZone={timeZone}
             onSaved={async () => {
               setRuleOpen(false);
               await reload();

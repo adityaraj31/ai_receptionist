@@ -227,5 +227,5 @@ uv run pytest
   recording metadata to `/api/v1/agent/calls`. Post-call summary/cost/evaluation jobs are
   documented in [`../docs/post-call.md`](../docs/post-call.md).
 - Recording is opt-in: set `RECORDING_ENABLED=true` plus the S3 values. The agent starts a
-  LiveKit audio-only egress and stops/polls it at shutdown. The greeting asks for consent,
-  but the agent does not yet enforce a refusal before recording.
+  LiveKit audio-only egress only after `set_recording_consent` receives a clear yes, and
+  stops/polls it at shutdown. A refusal or unclear answer keeps the call unrecorded.

@@ -71,7 +71,43 @@ def prewarm(proc: JobProcess) -> None:
     proc.userdata["vad"] = silero.VAD.load()
 
 
-server = AgentServer(setup_fnc=prewarm)
+def _optional_int(name: str, *, minimum: int, maximum: int) -> int | None:
+    raw = os.getenv(name, "").strip()
+    if not raw:
+        return None
+    try:
+        value = int(raw)
+    except ValueError as exc:
+        raise RuntimeError(f"{name} must be an integer, got {raw!r}") from exc
+    if not minimum <= value <= maximum:
+        raise RuntimeError(f"{name} must be between {minimum} and {maximum}, got {value}")
+    return value
+
+
+def _active_call_load(server: AgentServer, max_calls: int) -> float:
+    return min(len(server.active_jobs) / max_calls, 1.0)
+
+
+def _server_options() -> dict[str, Any]:
+    options: dict[str, Any] = {}
+    if port := _optional_int("AGENT_HTTP_PORT", minimum=1, maximum=65535):
+        options["port"] = port
+    if prometheus_port := _optional_int("AGENT_PROMETHEUS_PORT", minimum=1, maximum=65535):
+        options["prometheus_port"] = prometheus_port
+    if idle_processes := _optional_int("AGENT_NUM_IDLE_PROCESSES", minimum=0, maximum=64):
+        options["num_idle_processes"] = idle_processes
+    if memory_limit := _optional_int("AGENT_JOB_MEMORY_LIMIT_MB", minimum=0, maximum=8192):
+        options["job_memory_limit_mb"] = memory_limit
+    if max_calls := _optional_int("AGENT_MAX_ACTIVE_CALLS", minimum=1, maximum=256):
+        # Admission control follows active calls, not CPU. Keep this above the
+        # autoscaling target so queued calls can trigger scale-out before the
+        # worker reports itself full.
+        options["load_fnc"] = lambda server: _active_call_load(server, max_calls)
+        options["load_threshold"] = 1.0
+    return options
+
+
+server = AgentServer(setup_fnc=prewarm, **_server_options())
 
 
 def _on_stt_metrics(m: metrics.STTMetrics) -> None:
@@ -301,6 +337,7 @@ async def receptionist(ctx: JobContext) -> None:
         timings=len(clinic_config.timings),
         agent_api_url=api_url,
         tools=[
+            "set_recording_consent",
             "check_availability",
             "book_appointment",
             "reschedule_appointment",
@@ -316,12 +353,12 @@ async def receptionist(ctx: JobContext) -> None:
         tts_language=TTS_LANGUAGE,
     )
 
-    await recording.start()
     await session.start(
         agent=ReceptionistAgent(
             clinic_config=clinic_config,
             api=api,
             transfer=transfer,
+            recording=recording,
         ),
         room=ctx.room,
     )

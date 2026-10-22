@@ -84,6 +84,42 @@ def test_usage_collector_accumulates_provider_metrics() -> None:
         "llm_prompt_tokens": 150,
         "llm_completion_tokens": 30,
         "tts_characters": 300,
+        "average_latency_ms": None,
+        "latency_samples": 0,
+    }
+
+
+def test_usage_collector_averages_turn_latency() -> None:
+    lifecycle, _ = make_lifecycle()
+    lifecycle.on_conversation_item(
+        SimpleNamespace(
+            item=SimpleNamespace(
+                role="assistant",
+                text_content="One",
+                metrics={"e2e_latency": 0.8},
+            )
+        )
+    )
+    lifecycle.on_conversation_item(
+        SimpleNamespace(
+            item=SimpleNamespace(
+                role="assistant",
+                text_content="Two",
+                metrics={"e2e_latency": 1.2},
+            )
+        )
+    )
+    lifecycle.on_conversation_item(
+        SimpleNamespace(item=SimpleNamespace(role="user", text_content="Hi", metrics={}))
+    )
+
+    assert lifecycle.usage.as_dict() == {
+        "stt_audio_seconds": 0.0,
+        "llm_prompt_tokens": 0,
+        "llm_completion_tokens": 0,
+        "tts_characters": 0,
+        "average_latency_ms": 1000.0,
+        "latency_samples": 2,
     }
 
 

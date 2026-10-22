@@ -10,6 +10,7 @@ from .api.routers import (
     auth,
     availability,
     callbacks,
+    calls,
     clinic,
     doctors,
     faqs,
@@ -66,6 +67,10 @@ TAGS_METADATA = [
         "name": "Messaging",
         "description": "Clinic confirmation and reminder settings, templates, and providers.",
     },
+    {
+        "name": "Calls & Analytics",
+        "description": "Clinic-scoped call analytics, transcripts, recordings, and evaluations.",
+    },
 ]
 
 
@@ -116,3 +121,4 @@ app.include_router(appointments.router, prefix="/api/v1")
 app.include_router(faqs.router, prefix="/api/v1")
 app.include_router(callbacks.router, prefix="/api/v1")
 app.include_router(messaging.router, prefix="/api/v1")
+app.include_router(calls.router, prefix="/api/v1")

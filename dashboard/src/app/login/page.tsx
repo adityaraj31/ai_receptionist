@@ -1,10 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { useAuth } from "@/components/auth-provider";
 import { StethoscopeIcon } from "@/components/icons";
+import { ThemeToggle } from "@/components/theme-toggle";
 import {
   Button,
   ErrorPanel,
@@ -82,7 +84,8 @@ export default function LoginPage() {
         </p>
       </section>
 
-      <section className="flex items-center justify-center px-5 py-12 sm:px-8">
+      <section className="relative flex items-center justify-center px-5 py-12 sm:px-8">
+        <ThemeToggle className="absolute right-5 top-5" />
         <div className="w-full max-w-md">
           <div className="mb-8 flex items-center gap-3 lg:hidden">
             <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-teal-700 text-white">
@@ -141,6 +144,15 @@ export default function LoginPage() {
               Sign in
             </Button>
           </form>
+
+          <p className="mt-6 text-center text-sm text-slate-500">
+            <Link
+              className="font-semibold text-teal-700 transition hover:text-teal-800"
+              href="/"
+            >
+              Back to product overview
+            </Link>
+          </p>
         </div>
       </section>
     </main>

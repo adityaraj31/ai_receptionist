@@ -30,19 +30,25 @@ class StorageError(RuntimeError):
 
 
 def _configured() -> bool:
-    return bool(settings.s3_bucket and settings.s3_access_key_id and settings.s3_secret_access_key)
+    if not settings.s3_bucket:
+        return False
+    has_key = bool(settings.s3_access_key_id)
+    has_secret = bool(settings.s3_secret_access_key)
+    # Either use explicit keys or let boto3 resolve an IAM task role.
+    return has_key == has_secret
 
 
 def _client():
     addressing_style = "path" if settings.s3_force_path_style else "auto"
-    return boto3.client(
-        "s3",
-        endpoint_url=settings.s3_endpoint_url or None,
-        region_name=settings.s3_region or None,
-        aws_access_key_id=settings.s3_access_key_id,
-        aws_secret_access_key=settings.s3_secret_access_key,
-        config=Config(signature_version="s3v4", s3={"addressing_style": addressing_style}),
-    )
+    kwargs: dict[str, Any] = {
+        "endpoint_url": settings.s3_endpoint_url or None,
+        "region_name": settings.s3_region or None,
+        "config": Config(signature_version="s3v4", s3={"addressing_style": addressing_style}),
+    }
+    if settings.s3_access_key_id and settings.s3_secret_access_key:
+        kwargs["aws_access_key_id"] = settings.s3_access_key_id
+        kwargs["aws_secret_access_key"] = settings.s3_secret_access_key
+    return boto3.client("s3", **kwargs)
 
 
 def _suffix(meta: dict[str, Any]) -> str:
@@ -154,3 +160,17 @@ async def persist_recording(
         return source_url, f"recording_storage_failed: {exc}"[:500]
 
     return _public_url(target_key), None
+
+
+def presign_recording_url(url: str, expires_in: int | None = None) -> str:
+    parsed = _parse_s3_url(url)
+    if parsed is None:
+        raise StorageError("invalid s3 recording URL")
+    if not _configured():
+        raise StorageError("recording storage is not configured")
+    bucket, key = parsed
+    return _client().generate_presigned_url(
+        "get_object",
+        Params={"Bucket": bucket, "Key": key},
+        ExpiresIn=expires_in or settings.recording_url_ttl_seconds,
+    )

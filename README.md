@@ -50,6 +50,16 @@ admin dashboard in [`/dashboard`](dashboard).
    | `db` | `pgvector/pgvector:pg16` | `5432` |
    | `redis` | `redis:7-alpine` | `6379` |
 
+   To run the API, Arq worker, dashboard, and agent in containers instead of on the
+   host, use `docker compose --profile app up -d --build`. When the app runs in Compose,
+   apply migrations inside the API image so they target the Compose Postgres (not a
+   remote `DATABASE_URL` from `.env`):
+
+   ```bash
+   docker compose --profile app run --rm api alembic upgrade head
+   docker compose --profile app run --rm api python -m scripts.seed
+   ```
+
 3. **Verify Postgres and pgvector**
 
    ```bash
@@ -147,10 +157,11 @@ backend at `NEXT_PUBLIC_API_URL` (default `http://localhost:8000`); copy `.env.e
 to `.env.local` to override it. The API must allow the dashboard origin via
 `DASHBOARD_URL` (default `http://localhost:3000`).
 
-The dashboard includes login, a first-run setup wizard, doctor management, weekly
+The dashboard includes a public product overview, login, a first-run setup wizard, doctor management, weekly
 availability and time off, a daily appointment list with booking, rescheduling,
 cancellation, and free-slot views, an FAQ knowledge base with add/edit/deactivate and
-JSON/CSV upload, a Callbacks queue for failed human transfers, a Messaging page for
+JSON/CSV upload, a Callbacks queue for failed human transfers, call analytics with
+per-call transcripts, recordings, and evaluations, a Messaging page for
 confirmation/reminder switches and Hindi/English templates, plus admin-only staff
 management. Admins can invite
 receptionists or other admins, promote or demote staff, and deactivate access. An invite
@@ -181,9 +192,28 @@ Then open the [LiveKit Agents Playground](https://agents-playground.livekit.io/)
 start a session with agent name `ai-receptionist`. See [agent/README.md](agent/README.md)
 for required keys, browser testing, and latency log fields.
 
+Run a concurrent load test against a running worker (silent calls measure the greeting
+path; pass a caller WAV to exercise STT/LLM/tools):
+
+```bash
+cd agent
+uv run python scripts/load_test_calls.py --calls 10 --duration 30
+uv run python scripts/load_test_calls.py --calls 25 --audio /tmp/caller.wav --output /tmp/load-test.json
+```
+
+## Production deployment
+
+The production stack is ECS Fargate in `ap-south-1`, with RDS Postgres + pgvector,
+ElastiCache Redis, S3 recordings, and autoscaling for the agent worker based on active
+calls. See:
+
+- [docs/deployment.md](docs/deployment.md) - build, deploy, migrate, and operate
+- [docs/onboarding.md](docs/onboarding.md) - clinic hand-off, FAQ/calendar setup, consent/DPDP, demo script
+- [docs/rds-migration.md](docs/rds-migration.md) - move Supabase/Neon to RDS Mumbai
+- [infra/aws](infra/aws) - Terraform, deploy script, metrics sidecar
+
 ## Next steps
 
-1. Calls/analytics dashboard fed by `calls`, `transcripts`, `evaluations`, and
-   `call_events`.
-2. CRM/Sheets sync and outbound consent tracking.
-3. Production SIP transfer routing and approved WhatsApp reminder templates.
+1. Two-way Google Calendar sync and CRM/Sheets sync.
+2. Outbound consent tracking and approved WhatsApp reminder templates.
+3. Production SIP transfer routing verification with the clinic front desk.

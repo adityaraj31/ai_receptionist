@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   createContext,
   useCallback,
@@ -37,6 +37,8 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const isPublicPath = pathname === "/" || pathname === "/login";
   const [staff, setStaff] = useState<Staff | null>(null);
   const [clinic, setClinic] = useState<Clinic | null>(null);
   const [loading, setLoading] = useState(true);
@@ -65,11 +67,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setStaff(null);
       setClinic(null);
       setError(getErrorMessage(caught));
-      router.replace("/login");
+      if (!isPublicPath) {
+        router.replace("/login");
+      }
     } finally {
       setLoading(false);
     }
-  }, [router]);
+  }, [isPublicPath, router]);
 
   useEffect(() => {
     void load();
@@ -81,12 +85,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setStaff(null);
       setClinic(null);
       setLoading(false);
-      router.replace("/login");
+      if (!isPublicPath) {
+        router.replace("/login");
+      }
     }
 
     window.addEventListener(AUTH_EXPIRED_EVENT, handleExpired);
     return () => window.removeEventListener(AUTH_EXPIRED_EVENT, handleExpired);
-  }, [router]);
+  }, [isPublicPath, router]);
 
   const establishSession = useCallback(async (response: LoginResponse) => {
     clearSetupSkip();

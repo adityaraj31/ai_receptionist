@@ -24,6 +24,17 @@ from .call import (
     TranscriptTurn,
 )
 from .callback import CallbackCreate, CallbackRead, CallbackStatus, CallbackUpdate
+from .calls import (
+    CallAnalyticsDay,
+    CallAnalyticsRead,
+    CallAnalyticsTotals,
+    CallDetailRead,
+    CallEvaluationRead,
+    CallLanguageSplit,
+    CallListItem,
+    CallOutcomeSplit,
+    CallTranscriptRead,
+)
 from .clinic import ClinicRead, ClinicUpdate
 from .common import Message, ORMModel
 from .doctor import DoctorCreate, DoctorRead, DoctorUpdate
@@ -47,8 +58,17 @@ from .staff import (
 from .time_off import TimeOffCreate, TimeOffRead, TimeOffUpdate
 
 __all__ = [
+    "CallAnalyticsDay",
+    "CallAnalyticsRead",
+    "CallAnalyticsTotals",
+    "CallDetailRead",
+    "CallEvaluationRead",
     "CallFinalizeRead",
     "CallFinalizeRequest",
+    "CallLanguageSplit",
+    "CallListItem",
+    "CallOutcomeSplit",
+    "CallTranscriptRead",
     "CallUsage",
     "AgentAvailabilityRead",
     "AgentClinicConfigRead",

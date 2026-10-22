@@ -1,0 +1,28 @@
+aws_region  = "ap-south-1"
+project     = "ai-receptionist"
+environment = "prod"
+image_tag   = "latest"
+
+api_hostname       = "api.clinic.example.com"
+dashboard_hostname = "app.clinic.example.com"
+# acm_certificate_arn = "arn:aws:acm:ap-south-1:123456789012:certificate/..."
+# route53_zone_id     = "Z0123456789EXAMPLE"
+
+# Must match the key used when running api/scripts/seed.py.
+agent_api_key      = "replace-with-a-random-32-byte-key"
+demo_staff_email   = "admin@clinic.example.com"
+demo_staff_password = "replace-with-a-strong-password"
+
+livekit_url        = "wss://your-project.livekit.cloud"
+livekit_api_key    = "..."
+livekit_api_secret = "..."
+livekit_agent_name = "ai-receptionist"
+# livekit_sip_number = "+918069000000"
+# livekit_sip_outbound_trunk = "ST_..."
+
+sarvam_api_key = "..."
+llm_api_key    = "..."
+
+# Optional messaging providers: meta, gupshup, exotel, plivo, fake, none.
+whatsapp_provider = "none"
+sms_provider      = "none"

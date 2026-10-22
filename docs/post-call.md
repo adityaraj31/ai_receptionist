@@ -96,8 +96,10 @@ The evaluation job stores one row per metric in `evaluations`:
 
 ## Recording storage
 
-Recording is opt-in with `RECORDING_ENABLED=true`. The agent starts a LiveKit
-audio-only room-composite egress to S3 and stops it during shutdown. Required variables:
+Recording is opt-in twice: `RECORDING_ENABLED=true` enables the capability, and the
+greeting asks the caller for consent. The `set_recording_consent` tool starts a LiveKit
+audio-only room-composite egress to S3 only after a clear yes; a no or unclear answer
+continues without recording. Egress stops during shutdown. Required variables:
 
 ```dotenv
 RECORDING_ENABLED=true

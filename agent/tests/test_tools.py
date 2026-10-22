@@ -40,6 +40,7 @@ def make_agent(
     handler: Any,
     config: ClinicConfig | None = None,
     transfer: Any = None,
+    recording: Any = None,
 ) -> ReceptionistAgent:
     transport = httpx.MockTransport(handler)
     api = AgentApiClient("http://api.test", "test-key", transport=transport)
@@ -47,6 +48,7 @@ def make_agent(
         clinic_config=config or make_config(),
         api=api,
         transfer=transfer,
+        recording=recording,
     )
 
 
@@ -496,3 +498,34 @@ def test_send_confirmation_reports_disabled_channel() -> None:
     assert result["ok"] is False
     assert result["reason"] == "confirmation_channel_disabled"
     assert "still booked" in result["say"]
+
+
+class FakeRecording:
+    def __init__(self, starts: bool = True) -> None:
+        self.starts = starts
+        self.start_calls = 0
+
+    async def start(self) -> bool:
+        self.start_calls += 1
+        return self.starts
+
+
+def test_recording_consent_starts_only_after_clear_yes() -> None:
+    recording = FakeRecording()
+    agent = make_agent(lambda request: httpx.Response(200, json=[]), recording=recording)
+
+    declined = asyncio.run(agent.set_recording_consent(False))
+    assert declined == {"ok": True, "recording": False}
+    assert recording.start_calls == 0
+
+    accepted = asyncio.run(agent.set_recording_consent(True))
+    assert accepted == {"ok": True, "recording": True}
+    assert recording.start_calls == 1
+
+
+def test_recording_consent_is_safe_without_recording_session() -> None:
+    agent = make_agent(lambda request: httpx.Response(200, json=[]))
+
+    result = asyncio.run(agent.set_recording_consent(True))
+
+    assert result == {"ok": True, "recording": False}

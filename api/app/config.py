@@ -54,6 +54,7 @@ class Settings(BaseSettings):
     s3_timeout_seconds: float = 30.0
     recording_prefix: str = "recordings"
     recording_max_bytes: int = 50 * 1024 * 1024
+    recording_url_ttl_seconds: int = 900
 
     whatsapp_provider: str = "none"
     whatsapp_api_url: str = "https://graph.facebook.com/v21.0"

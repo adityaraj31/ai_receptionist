@@ -6,13 +6,14 @@ import { Button, ErrorPanel, inputClass, labelClass } from "@/components/ui";
 import { api } from "@/lib/api-client";
 import type { AvailabilityRule } from "@/lib/api-types";
 import { getErrorMessage } from "@/lib/errors";
-import { formatWeekday } from "@/lib/format";
+import { formatNextWeekday, formatWeekday } from "@/lib/format";
 
 const weekdays = [1, 2, 3, 4, 5, 6, 7];
 
 export function AvailabilityRuleForm({
   doctorId,
   rule,
+  timeZone = "Asia/Kolkata",
   onSaved,
   onCancel,
   submitLabel,
@@ -20,6 +21,7 @@ export function AvailabilityRuleForm({
 }: {
   doctorId: string;
   rule?: AvailabilityRule | null;
+  timeZone?: string;
   onSaved: (rule: AvailabilityRule) => void;
   onCancel: () => void;
   submitLabel?: string;
@@ -93,6 +95,10 @@ export function AvailabilityRuleForm({
             </option>
           ))}
         </select>
+        <p className="mt-1 text-xs text-slate-500">
+          Repeats every {formatWeekday(weekday)}. Next date:{" "}
+          {formatNextWeekday(weekday, timeZone)}.
+        </p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
