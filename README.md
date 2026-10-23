@@ -11,7 +11,7 @@ See [AGENTS.md](AGENTS.md) for architecture, conventions, and the working agreem
 /agent       LiveKit agent worker (voice pipeline, tools, prompts)
 /api         FastAPI backend (appointments, calls, webhooks, dashboard API)
 /dashboard   Next.js analytics dashboard
-/infra       Dockerfiles, Postgres init, deploy configs, LiveKit SIP setup
+/infra       Dockerfiles, Postgres init, metrics sidecar, LiveKit SIP setup
 /evals       Transcript and FAQ retrieval eval scripts plus test conversations
 /docs        Architecture notes, runbooks
 ```
@@ -203,14 +203,13 @@ uv run python scripts/load_test_calls.py --calls 25 --audio /tmp/caller.wav --ou
 
 ## Production deployment
 
-The production stack is ECS Fargate in `ap-south-1`, with RDS Postgres + pgvector,
-ElastiCache Redis, S3 recordings, and autoscaling for the agent worker based on active
-calls. See:
+Production runs the same Docker images on a container host or orchestrator. The
+reference single-host deployment is Docker Compose with Postgres, Redis, an
+S3-compatible recordings bucket, and TLS in front of the API and dashboard. See:
 
 - [docs/deployment.md](docs/deployment.md) - build, deploy, migrate, and operate
 - [docs/onboarding.md](docs/onboarding.md) - clinic hand-off, FAQ/calendar setup, consent/DPDP, demo script
-- [docs/rds-migration.md](docs/rds-migration.md) - move Supabase/Neon to RDS Mumbai
-- [infra/aws](infra/aws) - Terraform, deploy script, metrics sidecar
+- [docs/postgres-migration.md](docs/postgres-migration.md) - move to a managed Postgres instance
 
 ## Next steps
 

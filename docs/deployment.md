@@ -1,214 +1,141 @@
-# Deploy to AWS Mumbai (ECS Fargate)
+# Deploy with Docker
 
-Production topology for the receptionist. Everything runs in `ap-south-1` (Mumbai)
-unless a provider requires otherwise.
+The application runs as four containers behind Postgres, Redis, and S3-compatible
+storage. For a small clinic, Docker Compose on one VM is enough. For multiple hosts,
+run the same images on a container platform and keep the external services managed.
 
 ```
-Route 53 / external DNS
-  -> ALB (public subnets, HTTPS)
-     -> api service         (FastAPI, Cloud Map: api.<project>.local:8000)
-     -> dashboard service   (Next.js, port 3000)
-  -> ECS Fargate
-     -> arq worker          (post-call jobs, reminders)
-     -> agent worker(s)     (LiveKit worker, HTTP 8081)
-        + metrics sidecar   (EMF -> CloudWatch ActiveCalls)
-  -> RDS Postgres 16 + pgvector (private subnets)
-  -> ElastiCache Redis 7 (TLS, private subnets)
-  -> S3 recordings bucket (private, encrypted, lifecycle expiry)
+Internet
+  -> reverse proxy (TLS)
+     -> dashboard :3000
+     -> API :8000
+  -> LiveKit Cloud (SIP + rooms)
+     -> agent worker :8081
+  -> API / Arq worker
+     -> Postgres + pgvector
+     -> Redis
+     -> S3-compatible recordings bucket
 ```
 
-Terraform lives in [`../infra/aws/terraform`](../infra/aws/terraform). Dockerfiles are in
-[`../infra/docker`](../infra/docker). The build/push helper is
-[`../infra/aws/deploy.sh`](../infra/aws/deploy.sh).
+The API, Arq worker, dashboard, and agent all use the images in
+[`../infra/docker`](../infra/docker). The root [`docker-compose.yml`](../docker-compose.yml)
+starts Postgres and Redis by default and runs the application with the `app` profile.
 
-The API and Arq worker use the ECS task role for S3 reads, writes, and presigned
-downloads. Only the agent receives the static egress access key, because LiveKit egress
-uploads the recording from outside the task.
+## What production needs
 
-## Why ECS
+- A Linux VM or container host. Start with 4 vCPU / 8 GB for API, dashboard, worker, and
+  one busy agent process; measure before sizing.
+- Docker Engine 24+ with Compose v2.
+- A domain and TLS certificate for the dashboard and API.
+- Network access to LiveKit Cloud, Sarvam, the LLM provider, and the WhatsApp/SMS
+  provider.
+- Postgres 16 with `pgvector` and `btree_gist`. The Compose file includes this database.
+- Redis 7 for Arq jobs and reminders.
+- An S3-compatible bucket for recordings. Keep it private and encrypted.
+- Provider keys for LiveKit, Sarvam, LLM, and messaging.
 
-A single VM is cheaper for a demo, but the agent has to add capacity when concurrent
-calls rise. ECS gives us a service-level desired count, health checks, rolling deploys,
-and Application Auto Scaling. The agent's admission control and autoscaling policy both
-use **active calls**, not CPU:
-
-- `AgentServer` reports `active_jobs` on `GET :8081/worker`.
-- The metrics sidecar samples that endpoint every 15 s and emits `ActiveCalls` through
-  CloudWatch Embedded Metric Format (EMF).
-- ECS target tracking keeps **average active calls per task** at
-  `agent_target_calls_per_task` (default 6).
-- `AGENT_MAX_ACTIVE_CALLS` (default 8) caps each task. Keep it above the scaling target
-  so new calls can still arrive and trigger scale-out.
-
-The worker load function is also active-call based when `AGENT_MAX_ACTIVE_CALLS` is set,
-so the default CPU load heuristic does not mark a task full before the autoscaler sees
-the call volume.
-
-## Prerequisites
-
-- AWS account with permissions for VPC, ECS, ECR, RDS, ElastiCache, S3, IAM, ALB,
-  CloudWatch, Secrets Manager, and Application Auto Scaling.
-- Terraform 1.9+ and AWS provider credentials (`AWS_PROFILE` or role).
-- Docker with Buildx.
-- AWS CLI v2.
-- Two DNS names, for example `api.clinic.example.com` and `app.clinic.example.com`.
-- An ACM certificate in `ap-south-1` covering both names. HTTP-only is possible for a
-  smoke test but is not acceptable for real caller data.
-- LiveKit, Sarvam, and LLM API keys.
-- A strong `agent_api_key`. It must equal `DEMO_AGENT_KEY` when seeding the database.
-
-## 1. Configure Terraform
+## 1. Configure the environment
 
 ```bash
-cd infra/aws/terraform
-cp terraform.tfvars.example terraform.tfvars
-# Edit terraform.tfvars. Never commit it.
+cp .env.example .env
 ```
 
-Set at minimum:
+Set at least:
 
-- `api_hostname`, `dashboard_hostname`, and `acm_certificate_arn`
-- `agent_api_key`, `demo_staff_password`
-- `livekit_url`, `livekit_api_key`, `livekit_api_secret`
-- `sarvam_api_key`, `llm_api_key`
-- `agent_target_calls_per_task` and `agent_max_count` after load testing
+- `SECRET_KEY` (generate a long random value)
+- `POSTGRES_PASSWORD`
+- `DATABASE_URL` only when using an external Postgres instance
+- `REDIS_URL` only when using an external Redis instance
+- `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`, `LIVEKIT_AGENT_NAME`
+- `SARVAM_API_KEY`, `LLM_API_KEY`
+- `AGENT_API_KEY`, which must match `DEMO_AGENT_KEY` when seeding
+- `NEXT_PUBLIC_API_URL`, for example `https://api.clinic.example.com`
+- `S3_*` recording settings and `RECORDING_ENABLED`
+- WhatsApp/SMS provider settings
 
-For shared state, copy [`backend.tf.example`](../infra/aws/terraform/backend.tf.example)
-to `backend.tf`, create the bucket/table, and run `terraform init -migrate-state`. Never
-commit state or `.tfvars` files.
+Never commit `.env`. The Compose app profile overrides `DATABASE_URL` and `REDIS_URL`
+to use the bundled `db` and `redis` services. For managed Postgres and Redis, add a
+Compose override that removes those two `environment` entries, or run the API/worker
+containers with the managed URLs directly.
 
-## 2. Create the ECR repositories first
-
-The first full apply cannot start healthy ECS tasks until images exist. Create only the
-repositories first:
+## 2. Build and start
 
 ```bash
-terraform init
-terraform apply -target='aws_ecr_repository.app'
+docker compose --profile app up -d --build
+docker compose --profile app logs -f api agent dashboard arq
 ```
 
-Then load the public API URL into the environment for the dashboard build:
+The dashboard's `NEXT_PUBLIC_API_URL` is baked in at build time. Rebuild the dashboard
+when the public API URL changes.
+
+## 3. Run migrations and seed
 
 ```bash
-export NEXT_PUBLIC_API_URL="https://api.clinic.example.com"
+docker compose --profile app run --rm api alembic upgrade head
+docker compose --profile app run --rm api python -m scripts.seed
 ```
 
-## 3. Build and push images
+The seed is demo data only. Skip it for a real clinic, or change the demo credentials
+before the first login.
+
+## 4. Put a reverse proxy in front
+
+Terminate TLS at Caddy, nginx, or the platform load balancer. Do not expose the agent
+metrics port or the database publicly. Example Caddy config:
+
+```caddyfile
+api.clinic.example.com {
+    reverse_proxy 127.0.0.1:8000
+}
+
+app.clinic.example.com {
+    reverse_proxy 127.0.0.1:3000
+}
+```
+
+Allow inbound traffic only on `80/443`, and restrict SSH to the operator network. The
+agent worker connects outbound to LiveKit for job dispatch; port `8081` is only for
+health and metrics and should not be public. See [`telephony.md`](telephony.md).
+
+## 5. Verify
 
 ```bash
-AWS_REGION=ap-south-1 IMAGE_TAG="$(git rev-parse --short HEAD)" \
-  ../deploy.sh
+curl -fsS https://api.clinic.example.com/health
+curl -fsSI https://app.clinic.example.com/login
 ```
 
-The script builds `linux/amd64` images for:
+Then dial the clinic number and confirm:
 
-| Image | Context | Purpose |
-| --- | --- | --- |
-| `ai-receptionist/api` | `api/` | API and Arq worker |
-| `ai-receptionist/agent` | `agent/` | LiveKit voice worker |
-| `ai-receptionist/dashboard` | `dashboard/` | Next.js standalone server |
-| `ai-receptionist/agent-metrics` | `infra/aws/agent-metrics/` | Active-call EMF sidecar |
-
-`NEXT_PUBLIC_API_URL` is baked into the dashboard at build time. Rebuild the dashboard if
-the API hostname changes.
-
-## 4. Apply the stack
-
-```bash
-terraform apply -var="image_tag=$(git rev-parse --short HEAD)"
-```
-
-Terraform creates the VPC, NAT gateway, ALB, RDS, Redis, S3, secrets, ECS services, and
-the agent autoscaling policy. Point DNS at the `alb_dns_name` output, or set
-`route53_zone_id` to let Terraform create alias records.
-
-## 5. Run migrations and seed
-
-The API task definition already has the database URL secret. Run one-off tasks in the
-private subnets using the outputs:
-
-```bash
-CLUSTER="$(terraform output -raw ecs_cluster_name)"
-TASK_DEF="$(terraform output -raw api_task_definition_arn)"
-SUBNETS="$(terraform output -json private_subnet_ids | jq -r 'join(",")')"
-SG="$(terraform output -raw app_security_group_id)"
-
-aws ecs run-task \
-  --cluster "$CLUSTER" \
-  --task-definition "$TASK_DEF" \
-  --launch-type FARGATE \
-  --network-configuration "awsvpcConfiguration={subnets=[$SUBNETS],securityGroups=[$SG],assignPublicIp=DISABLED}" \
-  --overrides '{"containerOverrides":[{"name":"api","command":["alembic","upgrade","head"]}]}'
-```
-
-Run the seed once (demo data only; skip it for a real clinic):
-
-```bash
-# Repeat aws ecs run-task with:
-# "command":["python","-m","scripts.seed"]
-```
-
-The seed uses `DEMO_STAFF_EMAIL`, `DEMO_STAFF_PASSWORD`, and `DEMO_AGENT_KEY` from the
-container secrets. The agent uses the same key as `AGENT_API_KEY`.
-
-## 6. Connect the phone number
-
-Create the LiveKit inbound trunk and dispatch rule with the runbook in
-[`telephony.md`](telephony.md). The dispatch rule must send
-`room_config.agents[].agent_name = ai-receptionist`; that value must match
-`LIVEKIT_AGENT_NAME` in Terraform.
-
-Then dial the DID and verify:
-
-- LiveKit room appears and the agent joins.
-- Greeting includes AI disclosure and recording consent.
-- A booking appears in the dashboard and the caller reads back name/date/time.
-- `ActiveCalls` appears in CloudWatch under `AIReceptionist/Agent`.
-- The agent service scales out when concurrent calls exceed the target.
-
-## 7. Load test before real traffic
-
-Run from a machine that can reach LiveKit Cloud, not from inside the VPC:
-
-```bash
-cd agent
-uv run python scripts/load_test_calls.py --calls 10 --duration 30
-```
-
-This smoke test measures room creation, dispatch, greeting TTS, and first-audio latency.
-For a full STT/LLM/tool test, pass a real caller recording:
-
-```bash
-uv run python scripts/load_test_calls.py \
-  --calls 25 \
-  --duration 45 \
-  --start-interval 2 \
-  --audio /tmp/caller-booking.wav \
-  --output /tmp/load-test.json
-```
-
-WAV must be 16-bit PCM mono/stereo. Start below `agent_max_count`; watch ECS desired
-count, `ActiveCalls` average, first-audio p95, and error rate. Tune
-`agent_target_calls_per_task`, CPU/memory, and `AGENT_MAX_ACTIVE_CALLS` from measured
-results. A 2 vCPU / 4 GB task at 6 calls is a starting point, not a guaranteed capacity.
+- the agent joins the LiveKit room
+- the greeting includes the AI disclosure and recording consent
+- a booking appears in the dashboard with the correct name, date, and time
+- the caller is transferred to the front desk when they ask for a human
+- a recording is created only after clear consent
 
 ## Operations
 
-- **Logs:** CloudWatch groups `/ecs/ai-receptionist-prod/{api,worker,dashboard,agent,agent-metrics}`.
-- **Secrets:** `ai-receptionist/prod/app` (JSON) and
-  `ai-receptionist/prod/database-url`. Update provider keys in Terraform or Secrets
-  Manager, then redeploy the service.
-- **Metrics:** `ActiveCalls` and `WorkerLoadPercent` in `AIReceptionist/Agent`, plus
-  ECS/Container Insights metrics.
-- **Rollback:** `terraform apply -var="image_tag=<previous-tag>"`. ECS circuit breakers
-  roll back failed deployments.
-- **Recording retention:** S3 lifecycle expires `recordings/` after
-  `recording_retention_days` (default 90). Change it to match the clinic's DPDP policy.
-- **Database:** see [`rds-migration.md`](rds-migration.md) for moving existing
-  Supabase/Neon data into this RDS instance.
+- **Logs:** `docker compose logs -f api agent dashboard arq`
+- **Restart one service:** `docker compose --profile app restart api`
+- **Update:** pull the new code, run `docker compose --profile app build`, then
+  `docker compose --profile app up -d`, then run Alembic.
+- **Rollback:** check out the previous commit, rebuild, and start again. Keep the
+  previous database backup until the new version has been verified.
+- **Backups:** run `pg_dump` on a schedule, encrypt the dump, and test a restore
+  monthly. Keep backups in India for DPDP compliance.
+- **Recording retention:** apply an object-storage lifecycle rule that matches the
+  clinic's consent and retention policy.
+- **Scaling:** one host can run one agent container. For more concurrency, run more
+  agent containers on more hosts and set `AGENT_MAX_ACTIVE_CALLS` so each worker
+  admits calls up to its measured capacity. LiveKit distributes jobs across connected
+  workers.
+- **Load testing:** use `agent/scripts/load_test_calls.py` before increasing traffic.
+  Watch first-audio latency and active calls, not CPU alone.
 
-## Cost notes
+## Security checklist
 
-The NAT gateway, ALB, RDS, ElastiCache, and at least one always-on agent task dominate
-the bill. Keep `agent_min_count = 1` so the first call is answered immediately; scaling
-to zero would make the first caller wait for a cold task.
+- TLS everywhere; no plain HTTP for the dashboard or API.
+- Secrets only in the environment or a secret manager, never in the image or repo.
+- Private Postgres, Redis, and recording bucket; no public database port.
+- Separate clinic API keys and staff accounts.
+- Recording consent enforced by the tool, not just the prompt.
+- Backups encrypted and access limited to the operator.

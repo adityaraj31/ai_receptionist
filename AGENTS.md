@@ -34,7 +34,7 @@ runbook are in `/infra/livekit-sip` and `docs/telephony.md`. Use the region-pinn
 - Messaging: WhatsApp Business API (Meta Cloud API or Gupshup), SMS via Exotel/Plivo
 - Dashboard: Next.js + Tailwind + Recharts
 - Observability: Langfuse (LLM traces), Sentry, structured JSON logs
-- Infra: Docker Compose locally; AWS ap-south-1 (Mumbai) for deployment
+- Infra: Docker Compose locally; the same Docker images for production
 
 ## Repo layout
 
@@ -47,7 +47,7 @@ runbook are in `/infra/livekit-sip` and `docs/telephony.md`. Use the region-pinn
 Caller -> PSTN -> Exotel/Plivo -> SIP trunk -> LiveKit SIP -> LiveKit Room
    -> Agent worker (Python): VAD -> STT -> LLM (tools) -> TTS
 /dashboard   Next.js analytics dashboard
-/infra       Dockerfiles, docker-compose, deploy configs, LiveKit SIP setup scripts
+/infra       Dockerfiles, Postgres init, metrics sidecar, LiveKit SIP setup scripts
 /evals       Transcript evaluation scripts and test conversations
 /docs        Architecture notes, runbooks
 ```
@@ -111,8 +111,9 @@ Post-call processing is wired end to end. The agent posts a finalize payload to
 transcript, generates a summary/outcome (LLM with heuristic fallback), and computes cost,
 then `evaluate_call` writes correctness/politeness/missed-handoff rows. Recording is
 opt-in via `RECORDING_ENABLED` plus caller consent and runs as a LiveKit audio-only
-egress. The API and worker use the ECS task role for S3; only the agent receives the
-static egress access key. See `docs/post-call.md`.
+egress. The API and worker should use an instance/task role for S3 when available; only
+the agent needs static egress keys when egress runs outside the task. See
+`docs/post-call.md`.
 
 Call analytics and call detail are staff-JWT, clinic-scoped APIs:
 `GET /api/v1/analytics/calls?days=30` aggregates calls/day, booking conversion,
@@ -124,22 +125,23 @@ conversation-item metrics into `calls.usage_metrics`, so no extra table is neede
 The dashboard **Analytics** page and `/calls/[id]` call detail consume these APIs;
 charts are lightweight SVG/CSS, not a charting dependency.
 
-Production deployment is ECS Fargate in `ap-south-1` (`infra/aws/terraform`), behind an
-ALB, with RDS Postgres 16 + pgvector, ElastiCache Redis (TLS), and private S3 recordings.
-Dockerfiles live in `infra/docker`; `infra/aws/deploy.sh` builds/pushes `linux/amd64`
-images. Do not deploy through ad-hoc host edits; changes go through Terraform.
+Production runs the Docker images in `infra/docker` on a container host or orchestrator.
+The reference single-host deployment is `docker compose --profile app`; it needs
+Postgres 16 + pgvector, Redis, an S3-compatible recordings bucket, and TLS in front of
+the API and dashboard. Do not edit production hosts by hand; deploy the images and
+environment through the chosen platform. See `docs/deployment.md`.
 
 The agent exposes `GET :8081/worker` (`active_jobs`, `worker_load`) and optional Prometheus
 metrics. In production, set `AGENT_HTTP_PORT=8081` and `AGENT_MAX_ACTIVE_CALLS` so worker
-admission control follows active calls rather than the default CPU load. The sidecar
-`infra/aws/agent-metrics` publishes `ActiveCalls` via CloudWatch EMF, and ECS target
-tracking keeps average active calls per task at `agent_target_calls_per_task`; keep
-`AGENT_MAX_ACTIVE_CALLS` above that target. Load test with
+admission control follows active calls rather than the default CPU load. If the platform
+scales on custom metrics, publish `ActiveCalls` with the optional
+`infra/aws/agent-metrics` sidecar or an equivalent collector, and keep
+`AGENT_MAX_ACTIVE_CALLS` above the scaling target. Load test with
 `agent/scripts/load_test_calls.py`; see `docs/deployment.md`.
 
 Recording is opt-in: the greeting asks consent and the `set_recording_consent` tool starts
-egress only after a clear yes. Keep that gate when changing prompts or tools. RDS
-migration and clinic hand-off are documented in `docs/rds-migration.md` and
+egress only after a clear yes. Keep that gate when changing prompts or tools. Postgres
+migration and clinic hand-off are documented in `docs/postgres-migration.md` and
 `docs/onboarding.md`.
 
 Calendar tools are implemented in `/agent` (`agent_tools.py` + `api_client.py`). They call
@@ -176,4 +178,4 @@ Free slots = weekly availability minus time off minus non-cancelled appointments
 - Week 2: FAQ RAG (done), human transfer (done), WhatsApp/SMS confirmations and
   24h/2h reminders (done: provider adapters, clinic templates, Arq jobs), CRM sync.
 - Week 3: Recording, transcripts, evals, analytics dashboard (done), concurrency tests,
-  production AWS deploy, demo and pricing.
+  production container deploy, demo and pricing.

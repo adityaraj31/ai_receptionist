@@ -46,12 +46,3 @@ Thumbs.db
 
 # Local embedding model cache
 .fastembed_cache/
-
-# Terraform
-.terraform/
-*.tfplan
-*.tfstate
-*.tfstate.*
-crash.log
-*.tfvars
-!*.tfvars.example

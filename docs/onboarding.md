@@ -138,11 +138,12 @@ Checklist:
 - [ ] Only clinic staff with a need to know can access transcripts and recordings.
 - [ ] The clinic has a privacy notice covering purpose, retention, data location, and
       grievance contact.
-- [ ] All production data (RDS, S3, Redis, backups, logs) stays in `ap-south-1`.
+- [ ] All production data (managed database, object storage, Redis, backups, logs) stays
+      in an India region.
 - [ ] The clinic knows the agent does not give medical advice or diagnoses; emergencies
       are transferred to a human or the emergency number.
 - [ ] The clinic has a deletion/retention request process for patient data.
-- [ ] Provider DPAs (LiveKit, Sarvam, LLM, WhatsApp/SMS, AWS) are on file.
+- [ ] Provider DPAs (LiveKit, Sarvam, LLM, WhatsApp/SMS, hosting provider) are on file.
 
 If the clinic does not consent to recording, set `RECORDING_ENABLED=false` for that
 deployment. Do not leave egress enabled "just in case."

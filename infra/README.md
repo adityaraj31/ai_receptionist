@@ -1,6 +1,6 @@
 # Infra
 
-Dockerfiles, Postgres init, AWS deployment, and telephony setup.
+Dockerfiles, Postgres init, telephony setup, and an optional metrics sidecar.
 
 ## Local stack
 
@@ -49,21 +49,24 @@ It also enables `btree_gist` for appointment/time-off exclusion constraints and
 To apply schema changes against a cloud database, set `DATABASE_URL` in `.env` and run
 the same `uv run alembic upgrade head` command.
 
-## AWS Mumbai (ECS Fargate)
+## Deployment
 
-The production stack is Terraform in [`aws/terraform`](aws/terraform). It creates the
-VPC, ALB, ECS services, RDS Postgres + pgvector, ElastiCache Redis, S3 recordings,
-Secrets Manager values, and active-call autoscaling for the agent.
+Build the images in [`docker/`](docker) and run them on a container host or
+orchestrator. The reference single-host deployment is the root
+[`docker-compose.yml`](../docker-compose.yml) `app` profile. See
+[`../docs/deployment.md`](../docs/deployment.md) for the full runbook and
+[`../docs/postgres-migration.md`](../docs/postgres-migration.md) for moving to managed
+Postgres.
 
-- Deployment runbook: [`../docs/deployment.md`](../docs/deployment.md)
-- RDS migration: [`../docs/rds-migration.md`](../docs/rds-migration.md)
-- Build/push helper: [`aws/deploy.sh`](aws/deploy.sh)
-- Active-call metric sidecar: [`aws/agent-metrics/`](aws/agent-metrics)
+The application needs Postgres 16 + pgvector, Redis, an S3-compatible recordings bucket,
+and TLS in front of the API and dashboard.
 
-The agent sidecar reads `GET :8081/worker`, publishes `ActiveCalls` to
-`AIReceptionist/Agent` via CloudWatch EMF, and ECS target tracking keeps average active
-calls per task at `agent_target_calls_per_task`. The worker's own admission control uses
-`AGENT_MAX_ACTIVE_CALLS`, which must stay above the scaling target.
+## Optional active-call metric sidecar
+
+[`aws/agent-metrics/`](aws/agent-metrics) reads `GET :8081/worker` and publishes
+`ActiveCalls` through CloudWatch EMF. It is optional; use it only when the container
+platform scales on a custom active-call metric. Keep `AGENT_MAX_ACTIVE_CALLS` above the
+scaling target so the worker admits calls up to the intended capacity.
 
 Load test against a deployed worker:
 
